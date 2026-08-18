@@ -6,7 +6,7 @@ The Mauritius Rental Platform is a web-based rental application and process mana
 
 The platform allows landlords to publish rental properties, receive structured rental applications, review applicants, schedule viewings, and communicate with prospective tenants.
 
-Tenants can search for properties, create a reusable rental profile, submit structured applications, track their application status, save properties, communicate with landlords, and manage viewing invitations.
+Tenants can search for properties, create a reusable rental profile, submit structured applications, track their application status, save properties, communicate with landlords, and manage viewing invitations
 
 The platform does not act as a real estate agent.
 
