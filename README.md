@@ -1,6 +1,6 @@
 # Mauritius Rental Platform
 
-A mobile-first web platform for landlords and tenants in Mauritius to manage the rental application process directly. This repository currently contains the TASK-000 development foundation only; rental product features and the database schema are intentionally not implemented yet.
+A mobile-first web platform for landlords and tenants in Mauritius to manage the rental application process directly. The repository contains the TASK-000 application bootstrap and the TASK-001 PostgreSQL/Supabase database foundation. Authentication flows and product features remain intentionally out of scope.
 
 ## Stack
 
@@ -52,6 +52,7 @@ npm run dev          # start the Vite frontend and Express backend
 npm run lint         # lint both workspaces
 npm run test         # run frontend and backend tests
 npm run build        # build the frontend and validate backend entry points
+npm run db:verify    # inspect and execute database migrations and invariants
 npm run format       # format project files
 npm run format:check # check formatting without changing files
 ```
@@ -67,10 +68,12 @@ Development defaults:
 ```text
 frontend/        React/Vite browser application
 backend/         Express REST API
-database/        Migration, seed, and schema placeholders for TASK-001
+database/        Ordered migrations, development seed, and database verification
 docs/            Product, architecture, security, UI, and testing specifications
 tasks/           Current task and roadmap task history
 python-services/ Reserved future specialist services
 ```
 
-See [`docs/`](docs/) for detailed requirements and [`tasks/CURRENT_TASK.md`](tasks/CURRENT_TASK.md) for the active work package.
+See [`database/README.md`](database/README.md) for migration and seed workflows,
+[`docs/`](docs/) for detailed requirements, and
+[`tasks/CURRENT_TASK.md`](tasks/CURRENT_TASK.md) for the active work package.

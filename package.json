@@ -13,12 +13,14 @@
   "scripts": {
     "dev": "concurrently -n frontend,backend -c cyan,green \"npm run dev --workspace frontend\" \"npm run dev --workspace backend\"",
     "lint": "npm run lint --workspace frontend && npm run lint --workspace backend",
-    "test": "npm run test --workspace frontend && npm run test --workspace backend",
+    "test": "npm run test --workspace frontend && npm run test --workspace backend && npm run db:verify",
     "build": "npm run build --workspace frontend && npm run build --workspace backend",
+    "db:verify": "node database/scripts/verify-static.mjs && node database/tests/migrations.test.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.5",
     "concurrently": "^10.0.5",
     "prettier": "^3.9.6"
   }
