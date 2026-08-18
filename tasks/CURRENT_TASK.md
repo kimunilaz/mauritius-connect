@@ -1,4 +1,4 @@
-# TASK-000 — Project Bootstrap
+# TASK-001 — Database Foundation
 
 ## Status
 
@@ -10,19 +10,20 @@ P0 — Foundation
 
 ## Objective
 
-Initialize the technical foundation of the Mauritius Rental Platform.
+Implement the approved PostgreSQL/Supabase database foundation for the Mauritius Rental Platform.
 
-This task establishes the React frontend, Node.js/Express backend, development tooling, testing infrastructure, Supabase configuration structure, and root development commands.
+This task converts `docs/DATABASE.md` into reproducible SQL migrations containing the complete V1 relational schema, constraints, indexes, timestamp handling, and initial Row Level Security posture.
 
-This task must **not implement rental product features**.
+This task is database infrastructure only.
+
+Do not implement authentication flows, API endpoints, frontend product functionality, or rental business services.
 
 ---
 
 # 1. Required Reading
 
-Before changing any code, read:
+Before changing code, read:
 
-```text
 docs/PRODUCT_SPEC.md
 docs/ARCHITECTURE.md
 docs/DATABASE.md
@@ -33,1230 +34,1632 @@ docs/TESTING.md
 docs/ROADMAP.md
 docs/UI_RULES.md
 tasks/CURRENT_TASK.md
-```
 
-These documents define the approved project architecture.
+Also inspect the implementation produced by TASK-000 before making changes.
 
-Do not silently contradict them.
-
----
-
-# 2. Approved Technology Stack
-
-Use:
-
-## Frontend
-
-```text
-React
-Vite
-JavaScript
-HTML
-CSS
-```
-
-## Backend
-
-```text
-Node.js
-Express
-```
-
-## Database / Platform
-
-```text
-PostgreSQL
-Supabase
-```
-
-## Package Manager
-
-```text
-npm
-```
+Do not silently contradict the governing documentation.
 
 ---
 
-# 3. Recommended Foundation Dependencies
+# 2. Scope
 
-Use only where required.
+Create the approved database schema for:
 
-## Frontend
+profiles
+tenant_profiles
+tenant_preferred_locations
+landlord_profiles
 
-```text
-react
-react-dom
-react-router-dom
-@supabase/supabase-js
-```
-
-Development:
-
-```text
-vite
-eslint
-prettier
-vitest
-@testing-library/react
-@testing-library/jest-dom
-```
-
-## Backend
-
-```text
-express
-cors
-helmet
-dotenv
-zod
-@supabase/supabase-js
-```
-
-Development/testing:
-
-```text
-nodemon
-eslint
-prettier
-vitest
-supertest
-```
-
-If current stable package compatibility requires a minor adjustment, make the smallest reasonable adjustment and document it.
-
-Do not introduce additional libraries without a clear need.
-
----
-
-# 4. Repository Structure
-
-Preserve/create the following structure:
-
-```text
-mauritius-rental-platform/
-│
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   ├── pages/
-│   │   ├── hooks/
-│   │   ├── services/
-│   │   ├── context/
-│   │   ├── utils/
-│   │   ├── constants/
-│   │   ├── App.jsx
-│   │   └── main.jsx
-│   │
-│   ├── public/
-│   ├── tests/
-│   ├── .env.example
-│   └── package.json
-│
-├── backend/
-│   ├── src/
-│   │   ├── config/
-│   │   ├── controllers/
-│   │   ├── routes/
-│   │   ├── services/
-│   │   ├── repositories/
-│   │   ├── middleware/
-│   │   ├── validators/
-│   │   ├── constants/
-│   │   ├── utils/
-│   │   ├── app.js
-│   │   └── server.js
-│   │
-│   ├── tests/
-│   │   ├── unit/
-│   │   ├── integration/
-│   │   ├── security/
-│   │   ├── fixtures/
-│   │   └── helpers/
-│   │
-│   ├── .env.example
-│   └── package.json
-│
-├── database/
-│   ├── migrations/
-│   ├── seeds/
-│   └── schema/
-│
-├── docs/
-│
-├── tasks/
-│   ├── CURRENT_TASK.md
-│   ├── backlog/
-│   └── completed/
-│
-├── python-services/
-│   └── README.md
-│
-├── .gitignore
-├── package.json
-├── README.md
-└── package-lock.json
-```
-
-Do not create Python application services yet.
-
----
-
-# 5. Root Workspace
-
-Configure the repository as an npm workspace containing:
-
-```text
-frontend
-backend
-```
-
-The root `package.json` should allow common development commands.
-
-Desired behavior:
-
-```bash
-npm install
-npm run dev
-npm run test
-npm run lint
-npm run build
-```
-
-The implementation may use a lightweight development dependency such as `concurrently` at the root if necessary to run frontend and backend together.
-
-Do not introduce monorepo frameworks such as:
-
-```text
-Nx
-Turborepo
-Lerna
-```
-
-for V1.
-
-They are unnecessary for the current architecture.
-
----
-
-# 6. Frontend Bootstrap
-
-Initialize the frontend using React with Vite.
-
-Create the base application.
-
-The initial interface should remain deliberately simple.
-
-Required initial routes:
-
-```text
-/
-```
-
-and:
-
-```text
-/404 fallback
-```
-
-Do not create tenant, landlord, property, application, or admin pages yet.
-
----
-
-# 7. Initial Homepage
-
-The initial homepage is only a development bootstrap screen.
-
-It should display:
-
-```text
-Mauritius Rental Platform
-```
-
-and a short development-status message.
-
-Example:
-
-```text
-Platform foundation is running.
-```
-
-Do not attempt to create the final marketing homepage during this task.
-
----
-
-# 8. React Router
-
-Install and configure React Router.
-
-The router should be structured so future route groups can later support:
-
-```text
-public
-tenant
-landlord
-admin
-```
-
-Do not implement those protected route groups yet.
-
----
-
-# 9. Frontend CSS Foundation
-
-Create a minimal global CSS foundation.
-
-Include:
-
-```text
-box-sizing reset
-body margin reset
-font-family
-basic background
-basic text styling
-```
-
-Create a small set of CSS variables for:
-
-```text
-spacing
-border radius
-text
-background
-surface
-border
-```
-
-Do not build the complete design system yet.
-
-Do not introduce Tailwind CSS, Bootstrap, Material UI, or another UI framework.
-
-The approved frontend styling approach is:
-
-```text
-CSS
-```
-
----
-
-# 10. Backend Bootstrap
-
-Create an Express backend.
-
-Separate:
-
-```text
-app.js
-```
-
-from:
-
-```text
-server.js
-```
-
-`app.js` should configure and export the Express application.
-
-`server.js` should start the HTTP server.
-
-This makes integration testing easier.
-
----
-
-# 11. API Base Path
-
-Use:
-
-```text
-/api/v1
-```
-
-for application API routes.
-
-Create the initial health route:
-
-```http
-GET /api/v1/health
-```
-
-Expected response:
-
-```json
-{
-  "success": true,
-  "data": {
-    "status": "ok"
-  }
-}
-```
-
-Status:
-
-```text
-200
-```
-
-No authentication is required for this endpoint.
-
----
-
-# 12. Health Endpoint Scope
-
-The health endpoint should confirm the Node application is running.
-
-Do not require Supabase or the database to be available for the basic:
-
-```text
-/api/v1/health
-```
-
-response.
-
-A dependency-aware health check may be introduced later.
-
-This prevents temporary external-service issues from making the backend impossible to inspect.
-
----
-
-# 13. Backend Middleware Foundation
-
-Configure:
-
-```text
-express.json()
-helmet
-cors
-```
-
-Add centralized:
-
-```text
-not-found handling
-error handling
-```
-
-Create middleware folders/modules rather than placing everything directly inside `server.js`.
-
----
-
-# 14. CORS
-
-Use environment configuration.
-
-Development should allow the frontend origin, for example:
-
-```text
-http://localhost:5173
-```
-
-Do not use unrestricted production CORS assumptions.
-
-Use:
-
-```text
-FRONTEND_URL
-```
-
-from backend environment configuration.
-
----
-
-# 15. Environment Configuration
-
-Create:
-
-```text
-backend/.env.example
-```
-
-containing placeholders:
-
-```text
-NODE_ENV=development
-PORT=3000
-
-FRONTEND_URL=http://localhost:5173
-
-SUPABASE_URL=
-SUPABASE_PUBLISHABLE_KEY=
-SUPABASE_SECRET_KEY=
-DATABASE_URL=
-```
-
-Do not place actual credentials in this file.
-
----
-
-# 16. Frontend Environment Configuration
-
-Create:
-
-```text
-frontend/.env.example
-```
-
-containing:
-
-```text
-VITE_API_BASE_URL=http://localhost:3000/api/v1
-
-VITE_SUPABASE_URL=
-VITE_SUPABASE_PUBLISHABLE_KEY=
-```
-
-Never include:
-
-```text
-SUPABASE_SECRET_KEY
-DATABASE_URL
-```
-
-in frontend configuration.
-
----
-
-# 17. Gitignore
-
-Ensure `.gitignore` excludes at minimum:
-
-```text
-node_modules/
-.env
-.env.*
-!.env.example
-
-dist/
-coverage/
-
-*.log
-
-.DS_Store
-```
-
-Do not ignore `.env.example`.
-
----
-
-# 18. Supabase Frontend Configuration
-
-Create a frontend Supabase client configuration module.
-
-Example location:
-
-```text
-frontend/src/services/supabaseClient.js
-```
-
-It should use:
-
-```text
-VITE_SUPABASE_URL
-VITE_SUPABASE_PUBLISHABLE_KEY
-```
-
-Do not implement authentication functionality yet.
-
-Do not attempt to access product database tables yet.
-
----
-
-# 19. Supabase Backend Configuration
-
-Create backend Supabase configuration modules with clear separation between public/user-context and privileged access concepts.
-
-At minimum, establish configuration structure without implementing rental operations.
-
-Privileged configuration may use:
-
-```text
-SUPABASE_SECRET_KEY
-```
-
-but must remain strictly backend-only.
-
-Do not expose or print the secret.
-
-If environment variables are missing during normal local startup, fail clearly only when a module actually requires those credentials unless the chosen configuration design intentionally validates them at startup.
-
-The basic health endpoint should still be testable without real Supabase credentials.
-
----
-
-# 20. Configuration Validation
-
-Create centralized environment/configuration handling.
-
-Do not access:
-
-```javascript
-process.env.SOMETHING
-```
-
-randomly throughout the backend.
-
-Prefer:
-
-```text
-src/config/env.js
-```
-
-or equivalent.
-
-Sensitive values must never be logged.
-
----
-
-# 21. Backend Error Architecture
-
-Create centralized error handling.
-
-Establish a reusable application error representation.
-
-Example concept:
-
-```text
-AppError
-```
-
-with:
-
-```text
-statusCode
-code
-message
-```
-
-Expected production API error structure:
-
-```json
-{
-  "success": false,
-  "error": {
-    "code": "ERROR_CODE",
-    "message": "Readable message"
-  }
-}
-```
-
-Do not expose stack traces to production clients.
-
----
-
-# 22. Not-Found API Behavior
-
-Unknown API routes should return:
-
-```text
-404
-```
-
-using the standard API error format.
-
-Example:
-
-```json
-{
-  "success": false,
-  "error": {
-    "code": "RESOURCE_NOT_FOUND",
-    "message": "Route not found."
-  }
-}
-```
-
----
-
-# 23. Request Logging
-
-Add minimal development-safe request logging.
-
-At minimum it may include:
-
-```text
-method
-route/path
-status
-duration
-```
-
-Do not log:
-
-```text
-Authorization headers
-tokens
-secrets
-request passwords
-```
-
-Do not introduce a large observability platform during bootstrap.
-
----
-
-# 24. Validation Foundation
-
-Install and configure:
-
-```text
-Zod
-```
-
-for future API request validation.
-
-Create the appropriate validator folder/foundation.
-
-Do not invent product schemas during this task.
-
-A small example/test validator may be created if needed to prove the setup works.
-
----
-
-# 25. Frontend Testing Foundation
-
-Configure:
-
-```text
-Vitest
-Testing Library
-jest-dom
-```
-
-Add at least one meaningful bootstrap test.
-
-Example:
-
-```text
-renders the platform bootstrap page
-```
-
-The test should actually run successfully.
-
----
-
-# 26. Backend Testing Foundation
-
-Configure:
-
-```text
-Vitest
-Supertest
-```
-
-Add integration tests for:
-
-```http
-GET /api/v1/health
-```
-
-Test:
-
-```text
-returns HTTP 200
-returns success=true
-returns status=ok
-```
-
-Also test an unknown API route returns the expected `404` response format.
-
----
-
-# 27. ESLint
-
-Configure ESLint for both:
-
-```text
-frontend
-backend
-```
-
-Use a consistent, uncomplicated configuration.
-
-Avoid overly strict rules that obstruct normal development without providing value.
-
----
-
-# 28. Prettier
-
-Configure Prettier consistently across the JavaScript project.
-
-Avoid competing formatter rules.
-
-Add appropriate ignore configuration where required.
-
----
-
-# 29. Root Scripts
-
-Root scripts should provide a simple developer experience.
-
-Expected commands:
-
-```bash
-npm run dev
-```
-
-Runs frontend and backend.
-
-```bash
-npm run test
-```
-
-Runs frontend and backend tests.
-
-```bash
-npm run lint
-```
-
-Runs frontend and backend linting.
-
-```bash
-npm run build
-```
-
-Builds the production frontend and performs whatever backend production validation is appropriate.
-
-Additional scripts may exist where useful.
-
----
-
-# 30. Frontend Development Port
-
-Use Vite's normal development port unless there is a conflict.
-
-Expected:
-
-```text
-5173
-```
-
----
-
-# 31. Backend Development Port
-
-Default:
-
-```text
-3000
-```
-
-with environment override through:
-
-```text
-PORT
-```
-
----
-
-# 32. Frontend-to-Backend Verification
-
-During bootstrap, verify the frontend can reach:
-
-```http
-GET /api/v1/health
-```
-
-A simple development status component may call the endpoint and display:
-
-```text
-API connected
-```
-
-or:
-
-```text
-API unavailable
-```
-
-This is acceptable for bootstrap.
-
-Keep the implementation simple.
-
----
-
-# 33. Database Folder
-
-Create:
-
-```text
-database/migrations/
-database/seeds/
-database/schema/
-```
-
-Do not implement the full schema in TASK-000.
-
-That belongs to the next database task.
-
-Placeholder `.gitkeep` files may be used if necessary to preserve empty directories.
-
----
-
-# 34. Python Services
-
-Create:
-
-```text
-python-services/README.md
-```
-
-with a short statement:
-
-```text
-Python/FastAPI services are reserved for future specialist functionality.
-No Python service is required for V1 bootstrap.
-```
-
-Do not install Python dependencies.
-
----
-
-# 35. README
-
-Update the root:
-
-```text
-README.md
-```
-
-Include:
-
-* project name
-* short product description
-* approved stack
-* prerequisites
-* installation instructions
-* environment setup
-* development commands
-* testing commands
-* directory overview
-
-Do not duplicate the entire product specification.
-
-Link developers to:
-
-```text
-docs/
-```
-
-for detailed requirements.
-
----
-
-# 36. Node Version
-
-Specify a supported modern Node.js version.
-
-Prefer a currently supported Node LTS release compatible with the chosen dependencies.
-
-Document it in:
-
-```text
-README.md
-```
-
-and optionally:
-
-```text
-.nvmrc
-```
-
-if useful.
-
-Do not silently depend on an obsolete Node version.
-
----
-
-# 37. No Product Features
-
-TASK-000 must not implement:
-
-```text
-authentication flows
-tenant profiles
-landlord profiles
 properties
-property images
+property_images
 listings
-search
-saved listings
+saved_listings
+
+application_questions
+application_question_options
+
 applications
-application questions
+application_answers
+application_status_history
+
 viewings
-messaging
+
+conversations
+conversation_participants
+messages
+
 notifications
+
 reports
-admin
-verification
-payments
-AI
-```
+verification_records
+admin_audit_logs
+
+Also create:
+
+- foreign keys
+- CHECK constraints
+- uniqueness rules
+- required indexes
+- partial unique indexes
+- timestamps
+- consistent updated_at handling
+- initial RLS enablement
+- development seed foundation
+- database verification documentation/tests where practical
+
+---
+
+# 3. Explicit Non-Scope
+
+Do NOT implement:
+
+- signup
+- login
+- auth middleware
+- role middleware
+- API routes
+- controllers
+- services
+- repositories
+- React pages
+- property forms
+- listing forms
+- applications UI
+- messaging UI
+- Supabase Storage buckets
+- payment tables
+- lease tables
+- AI tables
+- production deployment
 
 Those belong to later tasks.
 
 ---
 
-# 38. No Database Schema Yet
+# 4. Migration Strategy
 
-Do not create the complete V1 database schema during this task.
+All schema changes must be implemented through SQL migrations under:
 
-Database schema implementation is:
+database/migrations/
 
-```text
-TASK-001
-```
+Use ordered migration filenames.
 
-TASK-000 only prepares:
+Supabase-compatible timestamp naming is preferred.
 
-```text
-configuration
-folders
-tooling
-Supabase client foundations
-```
+Example:
 
----
+202608190001_create_profile_tables.sql
+202608190002_create_property_listing_tables.sql
+202608190003_create_application_tables.sql
 
-# 39. No Deployment Yet
+Exact timestamps/names may differ.
 
-Do not configure production Vercel, Railway, Render, Fly.io, or production Supabase deployment during TASK-000.
+The important requirement is deterministic ordering.
 
-Local development foundation comes first.
-
-Deployment belongs to a later roadmap phase.
+Do not create one enormous unreadable migration if several logically grouped migrations improve maintainability.
 
 ---
 
-# 40. No CI/CD Yet Unless Trivial
+# 5. Applied Migration Rule
 
-Do not spend TASK-000 implementing extensive CI/CD.
+Never rewrite a migration that has already been applied to a shared or production environment.
 
-If a very small GitHub Actions workflow naturally fits without expanding scope, document it as a recommendation rather than implementing it unless explicitly requested.
+TASK-001 is creating the initial migration set, so the migrations may be organized cleanly now.
 
-Formal CI/CD belongs to a later task.
-
----
-
-# 41. Security Requirements
-
-TASK-000 must already follow these rules:
-
-* no secrets committed
-* no secret key in frontend
-* Helmet enabled
-* controlled CORS configuration
-* standard error responses
-* request bodies parsed safely
-* dependency choices kept minimal
-* `.env` ignored
-* production stack traces not exposed
+Later schema changes must use new migrations.
 
 ---
 
-# 42. Code Quality Requirements
+# 6. PostgreSQL Extensions
 
-Do not:
+Confirm whether required UUID functionality is already available in Supabase PostgreSQL.
 
-* place all backend code in one file
-* place all React code in one component
-* use giant configuration files
-* add unused dependencies
-* leave unexplained generated code
-* add product functionality outside this task
+Use:
 
----
+gen_random_uuid()
 
-# 43. Required Tests
+for application-generated UUID primary keys.
 
-At minimum:
+Do not add unnecessary PostgreSQL extensions.
 
-## Frontend
-
-```text
-bootstrap page renders
-```
-
-## Backend
-
-```text
-GET /api/v1/health → 200
-GET unknown API route → 404 standard error
-```
-
-All tests must actually be executed.
+If an extension is required, create it explicitly and safely.
 
 ---
 
-# 44. Required Verification Commands
+# 7. profiles Table
 
-Before reporting completion, run from the repository root:
+Create:
 
-```bash
-npm install
+profiles
+
+Fields:
+
+id UUID PRIMARY KEY
+role TEXT NOT NULL
+first_name TEXT NOT NULL
+last_name TEXT NOT NULL
+phone TEXT
+profile_photo_url TEXT
+phone_verified BOOLEAN NOT NULL DEFAULT FALSE
+account_status TEXT NOT NULL DEFAULT 'ACTIVE'
+created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+Relationship:
+
+profiles.id → auth.users.id
+
+Use an explicit foreign key.
+
+Approved roles:
+
+TENANT
+LANDLORD
+ADMIN
+
+Approved account statuses:
+
+ACTIVE
+SUSPENDED
+DELETED
+
+Do not store passwords.
+
+Do not duplicate authentication credentials.
+
+Do not add an application email column unless required by a documented requirement.
+
+---
+
+# 8. Auth User Deletion
+
+Historical marketplace records must not disappear because an authenticated user is accidentally deleted.
+
+Choose a foreign-key deletion policy consistent with the documented soft-deletion strategy.
+
+Do not introduce broad cascading deletion from `auth.users` across rental history.
+
+Document the chosen behavior in the migration or database README if it is non-obvious.
+
+---
+
+# 9. tenant_profiles Table
+
+Create:
+
+tenant_profiles
+
+Fields:
+
+id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+user_id UUID NOT NULL UNIQUE
+occupation_type TEXT
+employer_or_school TEXT
+income_range TEXT
+preferred_move_date DATE
+preferred_lease_duration_months INTEGER
+number_of_occupants INTEGER
+has_pets BOOLEAN NOT NULL DEFAULT FALSE
+bio TEXT
+created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+Foreign key:
+
+user_id → profiles.id
+
+Constraints when values are present:
+
+preferred_lease_duration_months > 0
+number_of_occupants >= 1
+
+---
+
+# 10. tenant_preferred_locations Table
+
+Create:
+
+tenant_preferred_locations
+
+Fields:
+
+id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+tenant_profile_id UUID NOT NULL
+district TEXT
+locality TEXT
+neighbourhood TEXT
+created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+Foreign key:
+
+tenant_profile_id → tenant_profiles.id
+
+Do not store preferred locations as comma-separated text.
+
+---
+
+# 11. landlord_profiles Table
+
+Create:
+
+landlord_profiles
+
+Fields:
+
+id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+user_id UUID NOT NULL UNIQUE
+verification_status TEXT NOT NULL DEFAULT 'UNVERIFIED'
+created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+Foreign key:
+
+user_id → profiles.id
+
+Approved verification states:
+
+UNVERIFIED
+PENDING
+VERIFIED
+REJECTED
+
+---
+
+# 12. properties Table
+
+Create:
+
+properties
+
+Fields:
+
+id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+landlord_id UUID NOT NULL
+property_type TEXT NOT NULL
+address_line_1 TEXT
+address_line_2 TEXT
+district TEXT NOT NULL
+locality TEXT NOT NULL
+neighbourhood TEXT
+latitude NUMERIC(9,6)
+longitude NUMERIC(9,6)
+bedrooms INTEGER NOT NULL
+bathrooms NUMERIC(3,1) NOT NULL
+furnished BOOLEAN NOT NULL DEFAULT FALSE
+parking_spaces INTEGER NOT NULL DEFAULT 0
+verification_status TEXT NOT NULL DEFAULT 'UNVERIFIED'
+archived_at TIMESTAMPTZ
+created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+Foreign key:
+
+landlord_id → landlord_profiles.id
+
+Property types:
+
+APARTMENT
+HOUSE
+STUDIO
+ROOM
+TOWNHOUSE
+VILLA
+OTHER
+
+Verification states:
+
+UNVERIFIED
+PENDING
+VERIFIED
+REJECTED
+
+Constraints:
+
+bedrooms >= 0
+bathrooms >= 0
+parking_spaces >= 0
+
+Latitude must be between:
+
+-90 and 90
+
+Longitude must be between:
+
+-180 and 180
+
+when values are present.
+
+Do not expose public-address policy through the database itself; API serialization handles that later.
+
+---
+
+# 13. property_images Table
+
+Create:
+
+property_images
+
+Fields:
+
+id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+property_id UUID NOT NULL
+storage_path TEXT NOT NULL
+display_order INTEGER NOT NULL DEFAULT 0
+is_cover BOOLEAN NOT NULL DEFAULT FALSE
+created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+Foreign key:
+
+property_id → properties.id
+
+Constraint:
+
+display_order >= 0
+
+Unique:
+
+UNIQUE(property_id, storage_path)
+
+Critical partial unique index:
+
+only one property image may have:
+
+is_cover = TRUE
+
+for a given property.
+
+---
+
+# 14. listings Table
+
+Create:
+
+listings
+
+Fields:
+
+id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+property_id UUID NOT NULL
+title TEXT NOT NULL
+description TEXT NOT NULL
+monthly_rent NUMERIC(12,2) NOT NULL
+deposit_amount NUMERIC(12,2)
+available_from DATE NOT NULL
+minimum_lease_months INTEGER
+maximum_occupants INTEGER
+pets_allowed BOOLEAN NOT NULL DEFAULT FALSE
+status TEXT NOT NULL DEFAULT 'DRAFT'
+published_at TIMESTAMPTZ
+closed_at TIMESTAMPTZ
+created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+Foreign key:
+
+property_id → properties.id
+
+Approved states:
+
+DRAFT
+PENDING_REVIEW
+ACTIVE
+PAUSED
+RENTED
+CLOSED
+
+Constraints:
+
+monthly_rent >= 0
+
+deposit_amount >= 0 when not null
+
+minimum_lease_months > 0 when not null
+
+maximum_occupants > 0 when not null
+
+---
+
+# 15. One Live Listing Per Property
+
+Create a partial unique index preventing more than one live listing for the same property.
+
+Live states:
+
+PENDING_REVIEW
+ACTIVE
+PAUSED
+
+Historical states:
+
+RENTED
+CLOSED
+
+must not prevent a later rental cycle.
+
+---
+
+# 16. saved_listings Table
+
+Create:
+
+saved_listings
+
+Fields:
+
+tenant_id UUID NOT NULL
+listing_id UUID NOT NULL
+created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+Primary key:
+
+(tenant_id, listing_id)
+
+Foreign keys:
+
+tenant_id → tenant_profiles.id
+listing_id → listings.id
+
+This composite primary key must prevent duplicate saves.
+
+---
+
+# 17. application_questions Table
+
+Create:
+
+application_questions
+
+Fields:
+
+id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+listing_id UUID NOT NULL
+question_text TEXT NOT NULL
+question_type TEXT NOT NULL
+is_required BOOLEAN NOT NULL DEFAULT FALSE
+display_order INTEGER NOT NULL DEFAULT 0
+created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+Foreign key:
+
+listing_id → listings.id
+
+Approved types:
+
+TEXT
+NUMBER
+BOOLEAN
+DATE
+SELECT
+
+Constraint:
+
+display_order >= 0
+
+---
+
+# 18. application_question_options Table
+
+Create:
+
+application_question_options
+
+Fields:
+
+id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+question_id UUID NOT NULL
+option_text TEXT NOT NULL
+display_order INTEGER NOT NULL DEFAULT 0
+
+Foreign key:
+
+question_id → application_questions.id
+
+Constraint:
+
+display_order >= 0
+
+Do not attempt to enforce all SELECT-question semantics purely through SQL.
+
+That belongs partly to the service layer later.
+
+---
+
+# 19. applications Table
+
+Create:
+
+applications
+
+Fields:
+
+id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+listing_id UUID NOT NULL
+tenant_id UUID NOT NULL
+move_in_date DATE
+requested_lease_duration_months INTEGER
+number_of_occupants INTEGER
+introductory_message TEXT
+status TEXT NOT NULL DEFAULT 'DRAFT'
+submitted_at TIMESTAMPTZ
+withdrawn_at TIMESTAMPTZ
+created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+Foreign keys:
+
+listing_id → listings.id
+tenant_id → tenant_profiles.id
+
+Approved statuses:
+
+DRAFT
+SUBMITTED
+UNDER_REVIEW
+SHORTLISTED
+VIEWING_INVITED
+VIEWING_COMPLETED
+ACCEPTED
+REJECTED
+WITHDRAWN
+
+Constraints when provided:
+
+requested_lease_duration_months > 0
+number_of_occupants > 0
+
+---
+
+# 20. One Application Per Tenant Per Listing
+
+Create:
+
+UNIQUE(listing_id, tenant_id)
+
+V1 does not support multiple application records from the same tenant for the same listing.
+
+---
+
+# 21. Application Submission Integrity
+
+Create a database constraint so that:
+
+DRAFT
+
+may exist without:
+
+submitted_at
+
+but non-draft applications require:
+
+submitted_at IS NOT NULL
+
+Do not attempt to enforce every workflow transition with SQL CHECK constraints.
+
+Transition authorization belongs to the service layer later.
+
+---
+
+# 22. One Accepted Application Per Listing
+
+Create a partial unique index:
+
+one ACCEPTED application per listing.
+
+This is a critical database integrity guarantee.
+
+It must protect against concurrent acceptance attempts later.
+
+---
+
+# 23. application_answers Table
+
+Create:
+
+application_answers
+
+Fields:
+
+id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+application_id UUID NOT NULL
+question_id UUID NOT NULL
+answer_text TEXT
+created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+Foreign keys:
+
+application_id → applications.id
+question_id → application_questions.id
+
+Unique:
+
+UNIQUE(application_id, question_id)
+
+Do not over-engineer typed answer columns in V1.
+
+Type validation belongs to the backend service layer.
+
+---
+
+# 24. application_status_history Table
+
+Create:
+
+application_status_history
+
+Fields:
+
+id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+application_id UUID NOT NULL
+from_status TEXT
+to_status TEXT NOT NULL
+changed_by_user_id UUID NOT NULL
+created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+Foreign keys:
+
+application_id → applications.id
+changed_by_user_id → profiles.id
+
+`from_status` may be null for an initial history record if later workflow logic requires that.
+
+`to_status` must use an approved application status value.
+
+If practical, constrain both status columns to the approved state set.
+
+---
+
+# 25. viewings Table
+
+Create:
+
+viewings
+
+Fields:
+
+id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+application_id UUID NOT NULL
+proposed_by_user_id UUID NOT NULL
+start_time TIMESTAMPTZ NOT NULL
+end_time TIMESTAMPTZ
+status TEXT NOT NULL DEFAULT 'PROPOSED'
+notes TEXT
+created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+Foreign keys:
+
+application_id → applications.id
+proposed_by_user_id → profiles.id
+
+Approved states:
+
+PROPOSED
+CONFIRMED
+DECLINED
+COMPLETED
+CANCELLED
+NO_SHOW
+
+Constraint:
+
+end_time > start_time
+
+when end_time is provided.
+
+Multiple viewings per application must remain supported.
+
+Do not create a unique constraint on application_id.
+
+---
+
+# 26. conversations Table
+
+Create:
+
+conversations
+
+Fields:
+
+id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+listing_id UUID NOT NULL
+tenant_user_id UUID NOT NULL
+landlord_user_id UUID NOT NULL
+created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+Foreign keys:
+
+listing_id → listings.id
+tenant_user_id → profiles.id
+landlord_user_id → profiles.id
+
+Unique:
+
+UNIQUE(listing_id, tenant_user_id, landlord_user_id)
+
+---
+
+# 27. conversation_participants Table
+
+Create:
+
+conversation_participants
+
+Fields:
+
+conversation_id UUID NOT NULL
+user_id UUID NOT NULL
+last_read_at TIMESTAMPTZ
+joined_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+Primary key:
+
+(conversation_id, user_id)
+
+Foreign keys:
+
+conversation_id → conversations.id
+user_id → profiles.id
+
+---
+
+# 28. messages Table
+
+Create:
+
+messages
+
+Fields:
+
+id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+conversation_id UUID NOT NULL
+sender_user_id UUID NOT NULL
+content TEXT NOT NULL
+created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+edited_at TIMESTAMPTZ
+deleted_at TIMESTAMPTZ
+
+Foreign keys:
+
+conversation_id → conversations.id
+sender_user_id → profiles.id
+
+Do not attempt to enforce conversation membership through a plain foreign key.
+
+Membership must later be enforced by service logic and RLS where applicable.
+
+---
+
+# 29. notifications Table
+
+Create:
+
+notifications
+
+Fields:
+
+id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+user_id UUID NOT NULL
+type TEXT NOT NULL
+title TEXT NOT NULL
+message TEXT NOT NULL
+entity_type TEXT
+entity_id UUID
+read_at TIMESTAMPTZ
+created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+Foreign key:
+
+user_id → profiles.id
+
+`entity_id` is intentionally generic and should not have an invalid multi-table foreign key.
+
+---
+
+# 30. reports Table
+
+Create:
+
+reports
+
+Fields:
+
+id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+reporter_user_id UUID NOT NULL
+reported_user_id UUID
+listing_id UUID
+reason TEXT NOT NULL
+description TEXT
+status TEXT NOT NULL DEFAULT 'OPEN'
+resolved_by_user_id UUID
+resolution_notes TEXT
+resolved_at TIMESTAMPTZ
+created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+Foreign keys:
+
+reporter_user_id → profiles.id
+reported_user_id → profiles.id
+listing_id → listings.id
+resolved_by_user_id → profiles.id
+
+Approved states:
+
+OPEN
+UNDER_REVIEW
+RESOLVED
+DISMISSED
+
+Approved reasons:
+
+FAKE_LISTING
+INCORRECT_INFORMATION
+PROPERTY_UNAVAILABLE
+DUPLICATE_LISTING
+SUSPICIOUS_LANDLORD
+SUSPICIOUS_TENANT
+HARASSMENT
+OTHER
+
+Critical constraint:
+
+at least one of:
+
+reported_user_id
+listing_id
+
+must be non-null.
+
+---
+
+# 31. verification_records Table
+
+Create:
+
+verification_records
+
+Fields:
+
+id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+subject_type TEXT NOT NULL
+subject_id UUID NOT NULL
+verification_type TEXT NOT NULL
+status TEXT NOT NULL DEFAULT 'PENDING'
+reviewed_by_user_id UUID
+notes TEXT
+created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+reviewed_at TIMESTAMPTZ
+
+Approved subject types:
+
+USER
+PROPERTY
+
+Approved verification types:
+
+EMAIL
+PHONE
+LANDLORD_IDENTITY
+PROPERTY_INFORMATION
+PROPERTY_AUTHORITY
+
+Approved states:
+
+PENDING
+VERIFIED
+REJECTED
+EXPIRED
+
+Foreign key:
+
+reviewed_by_user_id → profiles.id
+
+Do NOT create a foreign key for:
+
+subject_id
+
+because the relationship is intentionally polymorphic.
+
+Later service logic must validate the referenced subject.
+
+---
+
+# 32. admin_audit_logs Table
+
+Create:
+
+admin_audit_logs
+
+Fields:
+
+id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+admin_user_id UUID NOT NULL
+action TEXT NOT NULL
+target_type TEXT NOT NULL
+target_id UUID
+reason TEXT
+metadata JSONB
+created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+Foreign key:
+
+admin_user_id → profiles.id
+
+Do not provide mutation logic for audit history in this task.
+
+---
+
+# 33. updated_at Handling
+
+Implement one consistent PostgreSQL mechanism for tables with:
+
+updated_at
+
+Preferred approach:
+
+a reusable trigger function.
+
+Example concept:
+
+set_updated_at()
+
+Apply it consistently to all tables containing `updated_at`.
+
+Do not depend on every future controller remembering to update timestamps manually.
+
+---
+
+# 34. Required Indexes
+
+At minimum implement indexes for:
+
+profiles(role)
+
+properties(landlord_id)
+
+properties(district, locality)
+
+listings(status)
+
+listings(available_from)
+
+listings(monthly_rent)
+
+applications(listing_id)
+
+applications(tenant_id)
+
+applications(listing_id, status)
+
+messages(conversation_id, created_at)
+
+notifications(user_id, created_at DESC)
+
+and an unread-notification partial index:
+
+notifications(user_id)
+WHERE read_at IS NULL
+
+---
+
+# 35. Foreign Key Index Review
+
+PostgreSQL does not automatically create indexes for every foreign key.
+
+Review high-traffic foreign-key columns and create useful indexes where obvious.
+
+Examples may include:
+
+property_images(property_id)
+
+saved_listings(listing_id)
+
+application_questions(listing_id)
+
+application_answers(application_id)
+
+application_status_history(application_id)
+
+viewings(application_id)
+
+conversations(listing_id)
+
+conversation_participants(user_id)
+
+reports(listing_id)
+
+Do not create excessive speculative indexes.
+
+---
+
+# 36. Delete Behavior
+
+Historical marketplace data should be preserved.
+
+Do not use broad `ON DELETE CASCADE` behavior on core historical entities without explicit justification.
+
+For dependent records that are purely structural and have no independent historical value, limited cascading may be appropriate.
+
+Examples requiring deliberate judgment:
+
+application_question_options → question
+conversation_participants → conversation
+
+Document non-obvious cascade decisions.
+
+Do not let deleting a property automatically erase rental history.
+
+---
+
+# 37. Row Level Security
+
+Enable Row Level Security on all application tables in the public schema.
+
+At this stage, default to deny-by-default.
+
+Do not add broad anonymous/authenticated policies merely to make development easier.
+
+Core workflow will use the Node API.
+
+TASK-002 and later tasks will introduce identity-aware access policies where required.
+
+---
+
+# 38. RLS Initial Posture
+
+After TASK-001:
+
+Direct browser access using the publishable key should not be able to freely read or write private platform tables.
+
+This is intentional.
+
+Do not create:
+
+USING (true)
+
+or:
+
+WITH CHECK (true)
+
+policies on private marketplace tables without a documented reason.
+
+---
+
+# 39. Supabase Secret Key
+
+Do not modify TASK-000 security architecture.
+
+The secret key remains:
+
+backend only.
+
+Never put:
+
+SUPABASE_SECRET_KEY
+
+in:
+
+frontend/
+VITE_*
+SQL files
+seed data
+tests
+documentation values
+
+---
+
+# 40. Development Seed Foundation
+
+Create development seed SQL under:
+
+database/seeds/
+
+The seed must be clearly marked:
+
+DEVELOPMENT / TEST ONLY
+
+It must never be automatically run against production.
+
+---
+
+# 41. Supabase Auth Seed Limitation
+
+Do not fabricate arbitrary `auth.users` rows in a way that would be unsafe or incompatible with Supabase Auth.
+
+Because `profiles.id` references `auth.users.id`, seed logic should respect the authentication environment.
+
+Choose one of these safe approaches:
+
+1. provide application-data seed helpers designed to work after test auth users are created, or
+2. create local-Supabase-compatible auth seed users using officially supported local development mechanisms, if the tooling is available and the approach is reliable.
+
+Do not weaken the foreign key merely to simplify seed data.
+
+Document the chosen approach.
+
+---
+
+# 42. Seed Personas
+
+The intended development personas are:
+
+Tenant A
+Tenant B
+
+Landlord A
+Landlord B
+
+Admin A
+
+Eventually include sample:
+
+properties
+listings
+applications
+viewing
+conversation
+messages
+notifications
+
+However, seed implementation must remain compatible with real Supabase Auth identity requirements.
+
+Do not create invalid relational data merely to satisfy the list.
+
+---
+
+# 43. Database Documentation
+
+Update or create:
+
+database/README.md
+
+Explain:
+
+- migration directory
+- migration order
+- how to apply migrations locally
+- how seeds work
+- RLS posture
+- destructive-reset warning
+- production migration rule
+
+Keep it concise and practical.
+
+---
+
+# 44. Schema Snapshot
+
+If useful, maintain:
+
+database/schema/
+
+with a generated or documented schema representation.
+
+Do not manually maintain a duplicate SQL schema if it will predictably drift from migrations.
+
+Migrations remain the source of truth.
+
+If a schema snapshot is generated, document how it is regenerated.
+
+---
+
+# 45. Local Verification
+
+If Supabase CLI and its required local runtime are available:
+
+apply migrations to a clean local Supabase database.
+
+Then verify constraints against the running database.
+
+If the environment does not support local Supabase execution, do not install unsafe or excessive infrastructure solely to pretend verification succeeded.
+
+Instead:
+
+- validate SQL as far as the available environment permits
+- run available checks
+- report exactly what could and could not be executed
+
+---
+
+# 46. Supabase CLI
+
+Do not make Supabase CLI a global machine requirement.
+
+If the project adopts it, prefer a documented local/project-compatible workflow.
+
+Do not change the architecture merely because Docker or local Supabase is unavailable.
+
+---
+
+# 47. Database Verification Tests
+
+Where the environment permits actual PostgreSQL execution, add tests proving critical invariants.
+
+Critical tests:
+
+- one live listing per property
+- one cover image per property
+- one application per tenant/listing
+- one accepted application per listing
+- negative rent rejected
+- invalid occupants rejected
+- invalid status rejected
+- report requires a target
+- viewing end time must follow start time
+
+---
+
+# 48. Static Verification
+
+Regardless of database runtime availability, Codex must inspect migrations and confirm that each critical invariant has an explicit database-level implementation.
+
+Do not claim runtime database tests were executed if they were not.
+
+---
+
+# 49. No Business State Machine in SQL
+
+Do not attempt to implement full application workflow authorization through database triggers.
+
+For example, TASK-001 should not create complicated triggers controlling:
+
+SUBMITTED → UNDER_REVIEW
+UNDER_REVIEW → SHORTLISTED
+
+Those rules belong to the Node service layer.
+
+Database constraints should protect structural invariants.
+
+---
+
+# 50. No Automatic Applicant Decisions
+
+Do not add:
+
+tenant_score
+match_score
+ranking
+recommendation_score
+priority_score
+risk_score
+
+or any similar tenant-selection columns.
+
+These are outside V1.
+
+---
+
+# 51. Money
+
+Use:
+
+NUMERIC(12,2)
+
+for:
+
+monthly_rent
+deposit_amount
+
+Do not use:
+
+FLOAT
+REAL
+DOUBLE PRECISION
+
+for money.
+
+V1 assumes Mauritian Rupees.
+
+Do not add currency complexity unless required.
+
+---
+
+# 52. Time
+
+Use:
+
+TIMESTAMPTZ
+
+for event timestamps.
+
+Do not use timezone-naive timestamps for:
+
+created_at
+updated_at
+submitted_at
+viewing times
+message times
+audit times
+
+Dates such as:
+
+available_from
+preferred_move_date
+
+should remain DATE.
+
+---
+
+# 53. Naming
+
+Use:
+
+snake_case
+
+for:
+
+tables
+columns
+constraints where practical
+indexes
+
+Use descriptive names.
+
+Avoid generated names that make debugging unnecessarily difficult.
+
+---
+
+# 54. Migration Safety
+
+Migrations must:
+
+- be deterministic
+- fail clearly when invalid
+- not contain production credentials
+- not destroy existing unrelated data
+- not depend on a particular developer's filesystem
+- not depend on hardcoded database URLs
+
+---
+
+# 55. SQL Quality
+
+Prefer explicit SQL.
+
+Avoid overly clever dynamic SQL.
+
+Add comments for important non-obvious constraints such as:
+
+- one accepted application
+- one live listing
+- polymorphic verification subject
+- RLS deny-by-default posture
+
+---
+
+# 56. Dependency Changes
+
+Do not add application runtime dependencies for this task unless genuinely required.
+
+Database tooling may be added as a development dependency only when it clearly improves reproducibility.
+
+Document every added dependency.
+
+---
+
+# 57. Documentation Consistency
+
+If implementation reveals a genuine contradiction in:
+
+docs/DATABASE.md
+
+or another governing document:
+
+do not silently choose a different schema.
+
+Report the conflict.
+
+For small correctness issues that clearly have one safe resolution, implement the minimal correction and update the relevant documentation.
+
+Do not redesign product architecture.
+
+---
+
+# 58. Required Verification
+
+Before completion, run from repository root:
+
 npm run lint
 npm run test
 npm run build
-```
+npm run format:check
 
-If any command fails:
+Also run all database-specific validation available in the environment.
 
-* investigate
-* fix if within task scope
-* report unresolved failure honestly
-
-Do not state that checks pass unless they were executed.
+If package scripts are added for database checks, run them.
 
 ---
 
-# 45. Manual Verification
+# 59. Existing TASK-000 Regression Protection
 
-Also verify:
+TASK-001 must not break the existing bootstrap.
 
-```text
-frontend starts
-backend starts
-health endpoint responds
-frontend can reach backend health endpoint
-```
+After database work:
 
-Do not require real production Supabase credentials for this bootstrap verification.
+- frontend tests must still pass
+- backend tests must still pass
+- frontend build must still pass
+- health endpoint architecture must remain unchanged unless required
 
----
-
-# 46. Acceptance Criteria
-
-TASK-000 is complete only when all of the following are true:
-
-* [ ] Root npm workspace exists.
-* [ ] React/Vite frontend starts.
-* [ ] Express backend starts.
-* [ ] `/api/v1/health` returns standard success response.
-* [ ] Unknown API route returns standard 404 error response.
-* [ ] Frontend can communicate with backend health endpoint.
-* [ ] React Router is configured.
-* [ ] Basic CSS foundation exists.
-* [ ] Supabase frontend configuration structure exists.
-* [ ] Supabase backend configuration structure exists.
-* [ ] Secret key is backend-only.
-* [ ] `.env.example` files exist.
-* [ ] `.gitignore` protects secrets and build artifacts.
-* [ ] Central backend error handling exists.
-* [ ] CORS is environment-controlled.
-* [ ] Helmet is enabled.
-* [ ] Zod validation foundation exists.
-* [ ] Frontend tests run.
-* [ ] Backend tests run.
-* [ ] ESLint passes.
-* [ ] Production frontend build succeeds.
-* [ ] README contains setup instructions.
-* [ ] No rental product features were implemented.
-* [ ] No real secrets were committed.
+Do not regress TASK-000.
 
 ---
 
-# 47. Definition of Done
+# 60. Acceptance Criteria
 
-Do not consider the task complete merely because the servers start.
+TASK-001 is complete only when:
 
-Completion requires:
+- [ ] Reproducible SQL migrations exist.
+- [ ] All approved V1 tables exist in migrations.
+- [ ] profiles references auth.users correctly.
+- [ ] No password/auth credentials are duplicated.
+- [ ] All documented primary keys exist.
+- [ ] Required foreign keys exist.
+- [ ] Role constraints exist.
+- [ ] Account status constraints exist.
+- [ ] Property type constraints exist.
+- [ ] Verification status constraints exist.
+- [ ] Listing status constraints exist.
+- [ ] Application status constraints exist.
+- [ ] Viewing status constraints exist.
+- [ ] Report status/reason constraints exist.
+- [ ] Verification subject/type/status constraints exist.
+- [ ] Money uses NUMERIC(12,2).
+- [ ] Event timestamps use TIMESTAMPTZ.
+- [ ] Coordinate range checks exist.
+- [ ] One cover image per property enforced at database level.
+- [ ] One live listing per property enforced at database level.
+- [ ] One application per tenant/listing enforced at database level.
+- [ ] One accepted application per listing enforced at database level.
+- [ ] Application submitted_at integrity exists.
+- [ ] Viewing time-order integrity exists.
+- [ ] Report target integrity exists.
+- [ ] Required indexes exist.
+- [ ] updated_at handling is automatic and consistent.
+- [ ] RLS enabled on application tables.
+- [ ] No permissive blanket RLS policies added.
+- [ ] Seed strategy respects Supabase Auth.
+- [ ] database/README.md explains migration/seed workflow.
+- [ ] No production secrets exist.
+- [ ] Existing lint/tests/build still pass.
+- [ ] Database-specific checks available in the environment were run.
+- [ ] No API/product features outside TASK-001 were implemented.
 
-```text
-implementation
+---
+
+# 61. Definition of Done
+
+TASK-001 requires:
+
+schema
 +
-tests
+constraints
 +
-lint
+indexes
 +
-build
+RLS foundation
++
+migration reproducibility
++
+seed foundation
++
+verification
 +
 documentation
-+
-security review
-```
 
-for the bootstrap scope.
+Simply creating tables is not enough.
 
 ---
 
-# 48. Completion Report
+# 62. Completion Report
 
 When finished, report:
 
 ## Summary
 
-What was implemented.
+Describe the database foundation implemented.
 
-## Files Created
+## Migrations Added
 
-List important files/directories created.
+List every migration and its purpose.
 
-## Files Modified
+## Tables Created
 
-List important existing files changed.
+List all tables.
 
-## Dependencies Added
+## Critical Constraints
 
-Separate frontend, backend, and root dependencies.
+Explicitly report implementation of:
 
-## Environment Variables
+- one live listing per property
+- one cover image per property
+- one application per tenant/listing
+- one accepted application per listing
 
-List variable names only.
+## Indexes Added
 
-Never reveal values.
+Summarize important indexes.
 
-## Tests Added
+## RLS
 
-List tests.
+Report:
 
-## Verification Performed
+- which tables have RLS enabled
+- policies created, if any
+- why
+
+Expected initial posture:
+
+RLS enabled with no broad permissive client policies.
+
+## updated_at
+
+Explain the implementation used.
+
+## Seed Strategy
+
+Explain how Supabase Auth-linked users are handled safely.
+
+## Database Verification
+
+Report exactly which database checks were executed.
+
+Distinguish:
+
+runtime database verification
+
+from:
+
+static SQL inspection
+
+Do not imply runtime verification occurred if no database runtime was available.
+
+## Tests
+
+Report:
+
+Tests added:
+Tests run:
+Tests passed:
+Tests failed:
+Tests skipped:
+
+## Root Verification
 
 Report results for:
 
-```text
 npm run lint
 npm run test
 npm run build
-```
+npm run format:check
 
-## Manual Verification
+## Dependencies Added
 
-Report whether:
+List any new dependencies and why they were necessary.
 
-```text
-frontend started
-backend started
-health endpoint worked
-frontend/backend connection worked
-```
+## Documentation Updated
 
-## Database Changes
-
-Expected for TASK-000:
-
-```text
-No product database migrations.
-```
-
-If this differs, explain why.
+List database/documentation changes.
 
 ## Security Notes
 
 Confirm:
 
-```text
-No secrets committed.
-Supabase secret key is backend-only.
-```
+- no secrets committed
+- RLS posture
+- no frontend secret key
+- no sensitive identity-document tables introduced
 
 ## Known Limitations
 
-List genuine bootstrap limitations.
+Report genuine limitations.
 
 ## Recommended Next Task
 
-Expected:
-
-```text
-TASK-001 — Database Foundation
-```
+TASK-002 — Authentication & Authorization
 
 Then stop.
 
-Do not implement TASK-001 automatically.
+Do not implement TASK-002 automatically.
