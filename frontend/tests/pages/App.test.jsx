@@ -1,7 +1,6 @@
-import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import App from '../../src/App.jsx';
+import { renderApp } from '../helpers/authTestUtils.jsx';
 
 describe('application bootstrap', () => {
   beforeEach(() => {
@@ -19,11 +18,7 @@ describe('application bootstrap', () => {
   });
 
   it('renders the platform bootstrap page and confirms the API connection', async () => {
-    render(
-      <MemoryRouter initialEntries={['/']}>
-        <App />
-      </MemoryRouter>,
-    );
+    renderApp();
 
     expect(
       screen.getByRole('heading', { name: 'Mauritius Rental Platform' }),
@@ -35,11 +30,7 @@ describe('application bootstrap', () => {
   });
 
   it('renders the not-found fallback for an unknown route', () => {
-    render(
-      <MemoryRouter initialEntries={['/missing']}>
-        <App />
-      </MemoryRouter>,
-    );
+    renderApp({ route: '/missing' });
 
     expect(
       screen.getByRole('heading', { name: 'Page not found' }),

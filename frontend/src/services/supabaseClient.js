@@ -17,7 +17,14 @@ export function getSupabaseClient() {
     );
   }
 
-  supabaseClient ??= createClient(supabaseUrl, supabasePublishableKey);
+  supabaseClient ??= createClient(supabaseUrl, supabasePublishableKey, {
+    auth: {
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      flowType: 'implicit',
+      persistSession: true,
+    },
+  });
 
   return supabaseClient;
 }

@@ -15,13 +15,19 @@
     "lint": "npm run lint --workspace frontend && npm run lint --workspace backend",
     "test": "npm run test --workspace frontend && npm run test --workspace backend && npm run db:verify",
     "build": "npm run build --workspace frontend && npm run build --workspace backend",
+    "auth:verify:hosted": "node backend/scripts/verify-hosted-auth.mjs",
+    "profiles:verify:hosted": "node backend/scripts/verify-hosted-profiles.mjs",
     "db:verify": "node database/scripts/verify-static.mjs && node database/tests/migrations.test.mjs",
+    "db:verify:hosted": "node database/scripts/verify-hosted.mjs",
+    "supabase:migrations:sync": "node database/scripts/sync-supabase-migrations.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.5",
     "concurrently": "^10.0.5",
-    "prettier": "^3.9.6"
+    "pg": "^8.23.0",
+    "prettier": "^3.9.6",
+    "supabase": "^2.115.0"
   }
 }

@@ -28,14 +28,26 @@ every later schema change in a new, ordered migration.
 
 ## Applying migrations
 
-Use the migration runner for the target Supabase project, or apply the files
-with `psql` and stop on the first error. For example, in PowerShell:
+The repository uses the project-local Supabase CLI while retaining
+`database/migrations/` as the source of truth. Synchronize the CLI staging
+directory, inspect the pending plan, apply it, and run the hosted catalog
+verification from the repository root:
 
-```powershell
-Get-ChildItem database/migrations/*.sql |
-  Sort-Object Name |
-  ForEach-Object { psql "$env:DATABASE_URL" -v ON_ERROR_STOP=1 -f $_.FullName }
+```bash
+npm run supabase:migrations:sync
+npx supabase db push --db-url "$DATABASE_URL" --include-all --dry-run
+npx supabase db push --db-url "$DATABASE_URL" --include-all
+npm run db:verify:hosted
 ```
+
+On an IPv4-only development machine, `DATABASE_URL` must be the Supabase
+Session pooler connection string (port 5432) from the dashboard Connect panel.
+The direct database endpoint is IPv6 unless the project has the IPv4 add-on.
+Do not put connection values on the command line, in source files, or in logs.
+
+`supabase/migrations/` is generated and ignored. The synchronization command
+copies the ordered SQL byte-for-byte and fails if unexpected migration files
+would be overwritten. Do not edit the generated copies.
 
 Apply migrations to a clean local/test database before a shared environment.
 Never run a destructive reset against production. Database URLs and credentials

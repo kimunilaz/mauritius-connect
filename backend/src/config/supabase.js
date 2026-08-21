@@ -37,6 +37,28 @@ export function createUserSupabaseClient(accessToken) {
 }
 
 let privilegedClient;
+let authVerificationClient;
+
+export function getAuthVerificationSupabaseClient() {
+  requireConfiguration([
+    ['SUPABASE_URL', env.supabaseUrl],
+    ['SUPABASE_PUBLISHABLE_KEY', env.supabasePublishableKey],
+  ]);
+
+  authVerificationClient ??= createClient(
+    env.supabaseUrl,
+    env.supabasePublishableKey,
+    {
+      auth: {
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+        persistSession: false,
+      },
+    },
+  );
+
+  return authVerificationClient;
+}
 
 export function getPrivilegedSupabaseClient() {
   requireConfiguration([
@@ -47,6 +69,7 @@ export function getPrivilegedSupabaseClient() {
   privilegedClient ??= createClient(env.supabaseUrl, env.supabaseSecretKey, {
     auth: {
       autoRefreshToken: false,
+      detectSessionInUrl: false,
       persistSession: false,
     },
   });

@@ -1,6 +1,6 @@
 # Mauritius Rental Platform
 
-A mobile-first web platform for landlords and tenants in Mauritius to manage the rental application process directly. The repository contains the TASK-000 application bootstrap and the TASK-001 PostgreSQL/Supabase database foundation. Authentication flows and product features remain intentionally out of scope.
+A mobile-first web platform for landlords and tenants in Mauritius to manage the rental application process directly. The repository contains the application bootstrap, PostgreSQL/Supabase database foundation, and Supabase authentication/authorization foundation. Rental product features remain intentionally out of scope.
 
 ## Stack
 
@@ -40,6 +40,10 @@ Copy-Item backend/.env.example backend/.env
 ```
 
 The health endpoint and bootstrap page work without Supabase credentials. Supabase client creation fails clearly only when a client is requested without its required configuration.
+
+Authentication routes require a configured Supabase project. See
+[`docs/AUTH_SETUP.md`](docs/AUTH_SETUP.md) for provider, callback, password
+recovery, and test-user setup.
 
 Never put `SUPABASE_SECRET_KEY` or `DATABASE_URL` in frontend environment files. Vite exposes `VITE_*` variables to the browser.
 

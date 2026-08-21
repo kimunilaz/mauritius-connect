@@ -1,4 +1,4 @@
-# TASK-001 — Database Foundation
+# TASK-004 — Property Management Core
 
 ## Status
 
@@ -6,23 +6,39 @@ READY
 
 ## Priority
 
-P0 — Foundation
+P0 — Core Marketplace
 
 ## Objective
 
-Implement the approved PostgreSQL/Supabase database foundation for the Mauritius Rental Platform.
+Implement landlord property-management functionality for the Mauritius Rental Platform.
 
-This task converts `docs/DATABASE.md` into reproducible SQL migrations containing the complete V1 relational schema, constraints, indexes, timestamp handling, and initial Row Level Security posture.
+This task covers the physical property record only.
 
-This task is database infrastructure only.
+Landlords must be able to:
 
-Do not implement authentication flows, API endpoints, frontend product functionality, or rental business services.
+- create a property
+- list their own properties
+- view one of their own properties
+- edit one of their own properties
+- archive one of their own properties
+
+This task does NOT include:
+
+- property image uploads
+- listings
+- rental pricing
+- applications
+- search
+- messaging
+- viewings
+
+Those belong to later tasks.
 
 ---
 
 # 1. Required Reading
 
-Before changing code, read:
+Before coding, read:
 
 docs/PRODUCT_SPEC.md
 docs/ARCHITECTURE.md
@@ -33,310 +49,91 @@ docs/DEVELOPMENT_RULES.md
 docs/TESTING.md
 docs/ROADMAP.md
 docs/UI_RULES.md
+docs/AUTH_SETUP.md
+database/README.md
 tasks/CURRENT_TASK.md
 
-Also inspect the implementation produced by TASK-000 before making changes.
+Inspect all completed TASK-000 through TASK-003 implementation.
 
-Do not silently contradict the governing documentation.
+Reuse the existing:
 
----
-
-# 2. Scope
-
-Create the approved database schema for:
-
-profiles
-tenant_profiles
-tenant_preferred_locations
-landlord_profiles
-
-properties
-property_images
-listings
-saved_listings
-
-application_questions
-application_question_options
-
-applications
-application_answers
-application_status_history
-
-viewings
-
-conversations
-conversation_participants
-messages
-
-notifications
-
-reports
-verification_records
-admin_audit_logs
-
-Also create:
-
-- foreign keys
-- CHECK constraints
-- uniqueness rules
-- required indexes
-- partial unique indexes
-- timestamps
-- consistent updated_at handling
-- initial RLS enablement
-- development seed foundation
-- database verification documentation/tests where practical
-
----
-
-# 3. Explicit Non-Scope
-
-Do NOT implement:
-
-- signup
-- login
-- auth middleware
+- authentication middleware
+- application profile loading
+- ACTIVE-account enforcement
 - role middleware
-- API routes
-- controllers
-- services
-- repositories
-- React pages
-- property forms
-- listing forms
-- applications UI
-- messaging UI
-- Supabase Storage buckets
-- payment tables
-- lease tables
-- AI tables
-- production deployment
+- Supabase repository/configuration patterns
+- API response conventions
+- validation patterns
+- frontend API client
+- protected routing
 
-Those belong to later tasks.
+Do not rebuild these foundations.
 
 ---
 
-# 4. Migration Strategy
+# 2. Domain Model
 
-All schema changes must be implemented through SQL migrations under:
+A Property is the physical rental asset.
 
-database/migrations/
+A Property is NOT a Listing.
 
-Use ordered migration filenames.
+Property contains information such as:
 
-Supabase-compatible timestamp naming is preferred.
+- type
+- physical location
+- bedrooms
+- bathrooms
+- furnishing
+- parking
 
-Example:
+Listing contains rental-cycle information such as:
 
-202608190001_create_profile_tables.sql
-202608190002_create_property_listing_tables.sql
-202608190003_create_application_tables.sql
+- monthly rent
+- deposit
+- availability
+- description
+- publication status
 
-Exact timestamps/names may differ.
-
-The important requirement is deterministic ordering.
-
-Do not create one enormous unreadable migration if several logically grouped migrations improve maintainability.
-
----
-
-# 5. Applied Migration Rule
-
-Never rewrite a migration that has already been applied to a shared or production environment.
-
-TASK-001 is creating the initial migration set, so the migrations may be organized cleanly now.
-
-Later schema changes must use new migrations.
+TASK-004 must preserve this distinction.
 
 ---
 
-# 6. PostgreSQL Extensions
+# 3. Existing Database Table
 
-Confirm whether required UUID functionality is already available in Supabase PostgreSQL.
-
-Use:
-
-gen_random_uuid()
-
-for application-generated UUID primary keys.
-
-Do not add unnecessary PostgreSQL extensions.
-
-If an extension is required, create it explicitly and safely.
-
----
-
-# 7. profiles Table
-
-Create:
-
-profiles
-
-Fields:
-
-id UUID PRIMARY KEY
-role TEXT NOT NULL
-first_name TEXT NOT NULL
-last_name TEXT NOT NULL
-phone TEXT
-profile_photo_url TEXT
-phone_verified BOOLEAN NOT NULL DEFAULT FALSE
-account_status TEXT NOT NULL DEFAULT 'ACTIVE'
-created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-
-Relationship:
-
-profiles.id → auth.users.id
-
-Use an explicit foreign key.
-
-Approved roles:
-
-TENANT
-LANDLORD
-ADMIN
-
-Approved account statuses:
-
-ACTIVE
-SUSPENDED
-DELETED
-
-Do not store passwords.
-
-Do not duplicate authentication credentials.
-
-Do not add an application email column unless required by a documented requirement.
-
----
-
-# 8. Auth User Deletion
-
-Historical marketplace records must not disappear because an authenticated user is accidentally deleted.
-
-Choose a foreign-key deletion policy consistent with the documented soft-deletion strategy.
-
-Do not introduce broad cascading deletion from `auth.users` across rental history.
-
-Document the chosen behavior in the migration or database README if it is non-obvious.
-
----
-
-# 9. tenant_profiles Table
-
-Create:
-
-tenant_profiles
-
-Fields:
-
-id UUID PRIMARY KEY DEFAULT gen_random_uuid()
-user_id UUID NOT NULL UNIQUE
-occupation_type TEXT
-employer_or_school TEXT
-income_range TEXT
-preferred_move_date DATE
-preferred_lease_duration_months INTEGER
-number_of_occupants INTEGER
-has_pets BOOLEAN NOT NULL DEFAULT FALSE
-bio TEXT
-created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-
-Foreign key:
-
-user_id → profiles.id
-
-Constraints when values are present:
-
-preferred_lease_duration_months > 0
-number_of_occupants >= 1
-
----
-
-# 10. tenant_preferred_locations Table
-
-Create:
-
-tenant_preferred_locations
-
-Fields:
-
-id UUID PRIMARY KEY DEFAULT gen_random_uuid()
-tenant_profile_id UUID NOT NULL
-district TEXT
-locality TEXT
-neighbourhood TEXT
-created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-
-Foreign key:
-
-tenant_profile_id → tenant_profiles.id
-
-Do not store preferred locations as comma-separated text.
-
----
-
-# 11. landlord_profiles Table
-
-Create:
-
-landlord_profiles
-
-Fields:
-
-id UUID PRIMARY KEY DEFAULT gen_random_uuid()
-user_id UUID NOT NULL UNIQUE
-verification_status TEXT NOT NULL DEFAULT 'UNVERIFIED'
-created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-
-Foreign key:
-
-user_id → profiles.id
-
-Approved verification states:
-
-UNVERIFIED
-PENDING
-VERIFIED
-REJECTED
-
----
-
-# 12. properties Table
-
-Create:
+Use the existing:
 
 properties
 
+table.
+
 Fields:
 
-id UUID PRIMARY KEY DEFAULT gen_random_uuid()
-landlord_id UUID NOT NULL
-property_type TEXT NOT NULL
-address_line_1 TEXT
-address_line_2 TEXT
-district TEXT NOT NULL
-locality TEXT NOT NULL
-neighbourhood TEXT
-latitude NUMERIC(9,6)
-longitude NUMERIC(9,6)
-bedrooms INTEGER NOT NULL
-bathrooms NUMERIC(3,1) NOT NULL
-furnished BOOLEAN NOT NULL DEFAULT FALSE
-parking_spaces INTEGER NOT NULL DEFAULT 0
-verification_status TEXT NOT NULL DEFAULT 'UNVERIFIED'
-archived_at TIMESTAMPTZ
-created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+id
+landlord_id
+property_type
+address_line_1
+address_line_2
+district
+locality
+neighbourhood
+latitude
+longitude
+bedrooms
+bathrooms
+furnished
+parking_spaces
+verification_status
+archived_at
+created_at
+updated_at
 
-Foreign key:
+Do not modify the schema unless a genuine correctness issue is discovered.
 
-landlord_id → landlord_profiles.id
+---
 
-Property types:
+# 4. Property Types
+
+Approved values:
 
 APARTMENT
 HOUSE
@@ -346,1279 +143,1141 @@ TOWNHOUSE
 VILLA
 OTHER
 
-Verification states:
+Backend validation must enforce the approved values.
+
+Do not trust arbitrary client values.
+
+---
+
+# 5. Verification Status
+
+Property verification status:
 
 UNVERIFIED
 PENDING
 VERIFIED
 REJECTED
 
-Constraints:
+TASK-004 only displays the current value where appropriate.
 
-bedrooms >= 0
-bathrooms >= 0
-parking_spaces >= 0
+Landlords must NEVER be able to directly change:
 
-Latitude must be between:
+verification_status
 
--90 and 90
-
-Longitude must be between:
-
--180 and 180
-
-when values are present.
-
-Do not expose public-address policy through the database itself; API serialization handles that later.
+through property create/edit endpoints.
 
 ---
 
-# 13. property_images Table
+# 6. Required API Endpoints
 
-Create:
+Implement:
 
-property_images
+POST  /api/v1/properties
+GET   /api/v1/landlord/properties
+GET   /api/v1/properties/:propertyId
+PATCH /api/v1/properties/:propertyId
+POST  /api/v1/properties/:propertyId/archive
 
-Fields:
+Authentication:
 
-id UUID PRIMARY KEY DEFAULT gen_random_uuid()
-property_id UUID NOT NULL
-storage_path TEXT NOT NULL
-display_order INTEGER NOT NULL DEFAULT 0
-is_cover BOOLEAN NOT NULL DEFAULT FALSE
-created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+required
 
-Foreign key:
+Account:
 
-property_id → properties.id
-
-Constraint:
-
-display_order >= 0
-
-Unique:
-
-UNIQUE(property_id, storage_path)
-
-Critical partial unique index:
-
-only one property image may have:
-
-is_cover = TRUE
-
-for a given property.
-
----
-
-# 14. listings Table
-
-Create:
-
-listings
-
-Fields:
-
-id UUID PRIMARY KEY DEFAULT gen_random_uuid()
-property_id UUID NOT NULL
-title TEXT NOT NULL
-description TEXT NOT NULL
-monthly_rent NUMERIC(12,2) NOT NULL
-deposit_amount NUMERIC(12,2)
-available_from DATE NOT NULL
-minimum_lease_months INTEGER
-maximum_occupants INTEGER
-pets_allowed BOOLEAN NOT NULL DEFAULT FALSE
-status TEXT NOT NULL DEFAULT 'DRAFT'
-published_at TIMESTAMPTZ
-closed_at TIMESTAMPTZ
-created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-
-Foreign key:
-
-property_id → properties.id
-
-Approved states:
-
-DRAFT
-PENDING_REVIEW
 ACTIVE
-PAUSED
-RENTED
-CLOSED
 
-Constraints:
+Role:
 
-monthly_rent >= 0
-
-deposit_amount >= 0 when not null
-
-minimum_lease_months > 0 when not null
-
-maximum_occupants > 0 when not null
+LANDLORD
 
 ---
 
-# 15. One Live Listing Per Property
+# 7. Create Property
 
-Create a partial unique index preventing more than one live listing for the same property.
+Endpoint:
 
-Live states:
+POST /api/v1/properties
 
-PENDING_REVIEW
-ACTIVE
-PAUSED
+Request example:
 
-Historical states:
+{
+  "property_type": "APARTMENT",
+  "address_line_1": "Example Street",
+  "address_line_2": null,
+  "district": "Moka",
+  "locality": "Moka",
+  "neighbourhood": null,
+  "latitude": -20.230,
+  "longitude": 57.500,
+  "bedrooms": 2,
+  "bathrooms": 1,
+  "furnished": true,
+  "parking_spaces": 1
+}
 
-RENTED
-CLOSED
+Backend must:
 
-must not prevent a later rental cycle.
+1. verify Supabase identity
+2. load application profile
+3. require ACTIVE
+4. require LANDLORD
+5. resolve authenticated user's landlord_profiles row
+6. validate input
+7. derive landlord_id server-side
+8. create property
+9. return explicit safe response
 
----
+Expected:
 
-# 16. saved_listings Table
-
-Create:
-
-saved_listings
-
-Fields:
-
-tenant_id UUID NOT NULL
-listing_id UUID NOT NULL
-created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-
-Primary key:
-
-(tenant_id, listing_id)
-
-Foreign keys:
-
-tenant_id → tenant_profiles.id
-listing_id → listings.id
-
-This composite primary key must prevent duplicate saves.
+201 Created
 
 ---
 
-# 17. application_questions Table
+# 8. Landlord Identity
 
-Create:
+Never accept ownership authority from:
 
-application_questions
+landlord_id
+user_id
+owner_id
 
-Fields:
+in the request.
 
-id UUID PRIMARY KEY DEFAULT gen_random_uuid()
-listing_id UUID NOT NULL
-question_text TEXT NOT NULL
-question_type TEXT NOT NULL
-is_required BOOLEAN NOT NULL DEFAULT FALSE
-display_order INTEGER NOT NULL DEFAULT 0
-created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+Property ownership must be derived from:
 
-Foreign key:
+authenticated user
+→ landlord_profiles
+→ landlord_id
 
-listing_id → listings.id
+Strict validation should reject protected ownership fields where practical.
 
-Approved types:
+---
 
-TEXT
-NUMBER
+# 9. Lazy Landlord Profile
+
+TASK-003 already provides landlord-profile initialization.
+
+Reuse it.
+
+Do not create an alternative landlord-profile creation mechanism inside property logic.
+
+---
+
+# 10. Required Fields
+
+Required:
+
+property_type
+district
+locality
+bedrooms
+bathrooms
+
+Optional:
+
+address_line_1
+address_line_2
+neighbourhood
+latitude
+longitude
+furnished
+parking_spaces
+
+Existing database requirements remain authoritative.
+
+---
+
+# 11. Validation
+
+At minimum enforce:
+
+property_type approved
+district non-empty
+locality non-empty
+
+bedrooms integer >= 0
+
+bathrooms numeric >= 0
+
+parking_spaces integer >= 0
+
+latitude between -90 and 90
+
+longitude between -180 and 180
+
+when coordinates are provided.
+
+Text values must:
+
+- be trimmed
+- have reasonable maximum lengths
+- reject meaningless empty strings where required
+
+---
+
+# 12. Suggested Text Limits
+
+Unless existing validation conventions establish other reasonable limits:
+
+address_line_1 <= 250
+address_line_2 <= 250
+district <= 100
+locality <= 150
+neighbourhood <= 150
+
+Do not add excessive restrictions that interfere with real Mauritius addresses.
+
+---
+
+# 13. Furnished
+
+furnished is:
+
 BOOLEAN
-DATE
-SELECT
 
-Constraint:
+Default:
 
-display_order >= 0
+false
 
----
+Do not represent this through ambiguous strings such as:
 
-# 18. application_question_options Table
+"yes"
+"no"
 
-Create:
-
-application_question_options
-
-Fields:
-
-id UUID PRIMARY KEY DEFAULT gen_random_uuid()
-question_id UUID NOT NULL
-option_text TEXT NOT NULL
-display_order INTEGER NOT NULL DEFAULT 0
-
-Foreign key:
-
-question_id → application_questions.id
-
-Constraint:
-
-display_order >= 0
-
-Do not attempt to enforce all SELECT-question semantics purely through SQL.
-
-That belongs partly to the service layer later.
+at API level.
 
 ---
 
-# 19. applications Table
+# 14. Bathrooms
 
-Create:
+The schema allows:
 
-applications
+NUMERIC(3,1)
 
-Fields:
+so values such as:
 
-id UUID PRIMARY KEY DEFAULT gen_random_uuid()
-listing_id UUID NOT NULL
-tenant_id UUID NOT NULL
-move_in_date DATE
-requested_lease_duration_months INTEGER
-number_of_occupants INTEGER
-introductory_message TEXT
-status TEXT NOT NULL DEFAULT 'DRAFT'
-submitted_at TIMESTAMPTZ
-withdrawn_at TIMESTAMPTZ
-created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+1
+1.5
+2
 
-Foreign keys:
+are valid where appropriate.
 
-listing_id → listings.id
-tenant_id → tenant_profiles.id
-
-Approved statuses:
-
-DRAFT
-SUBMITTED
-UNDER_REVIEW
-SHORTLISTED
-VIEWING_INVITED
-VIEWING_COMPLETED
-ACCEPTED
-REJECTED
-WITHDRAWN
-
-Constraints when provided:
-
-requested_lease_duration_months > 0
-number_of_occupants > 0
+Do not force bathrooms to integer-only if the database explicitly supports half-bath values.
 
 ---
 
-# 20. One Application Per Tenant Per Listing
+# 15. List Landlord Properties
 
-Create:
+Endpoint:
 
-UNIQUE(listing_id, tenant_id)
+GET /api/v1/landlord/properties
 
-V1 does not support multiple application records from the same tenant for the same listing.
+Return only properties owned by the authenticated landlord.
 
----
+Support:
 
-# 21. Application Submission Integrity
+page
+limit
+archived
 
-Create a database constraint so that:
+Recommended:
 
-DRAFT
+?page=1
+&limit=20
+&archived=false
 
-may exist without:
+Default:
 
-submitted_at
+page = 1
+limit = 20
+archived = false
 
-but non-draft applications require:
+Maximum:
 
-submitted_at IS NOT NULL
-
-Do not attempt to enforce every workflow transition with SQL CHECK constraints.
-
-Transition authorization belongs to the service layer later.
-
----
-
-# 22. One Accepted Application Per Listing
-
-Create a partial unique index:
-
-one ACCEPTED application per listing.
-
-This is a critical database integrity guarantee.
-
-It must protect against concurrent acceptance attempts later.
+limit = 100
 
 ---
 
-# 23. application_answers Table
+# 16. List Response
 
-Create:
+Use:
 
-application_answers
+{
+  "success": true,
+  "data": [],
+  "meta": {
+    "page": 1,
+    "limit": 20,
+    "total": 0,
+    "total_pages": 0
+  }
+}
 
-Fields:
-
-id UUID PRIMARY KEY DEFAULT gen_random_uuid()
-application_id UUID NOT NULL
-question_id UUID NOT NULL
-answer_text TEXT
-created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-
-Foreign keys:
-
-application_id → applications.id
-question_id → application_questions.id
-
-Unique:
-
-UNIQUE(application_id, question_id)
-
-Do not over-engineer typed answer columns in V1.
-
-Type validation belongs to the backend service layer.
+Do not return properties from other landlords.
 
 ---
 
-# 24. application_status_history Table
+# 17. Archived Filtering
 
-Create:
+Recommended semantics:
 
-application_status_history
+archived=false
 
-Fields:
+returns:
 
-id UUID PRIMARY KEY DEFAULT gen_random_uuid()
-application_id UUID NOT NULL
-from_status TEXT
-to_status TEXT NOT NULL
-changed_by_user_id UUID NOT NULL
-created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+archived_at IS NULL
 
-Foreign keys:
+archived=true
 
-application_id → applications.id
-changed_by_user_id → profiles.id
+returns:
 
-`from_status` may be null for an initial history record if later workflow logic requires that.
+archived_at IS NOT NULL
 
-`to_status` must use an approved application status value.
+If parameter is absent:
 
-If practical, constrain both status columns to the approved state set.
+default to active/non-archived properties.
+
+Do not invent another property status field.
 
 ---
 
-# 25. viewings Table
+# 18. Get One Property
 
-Create:
+Endpoint:
 
-viewings
+GET /api/v1/properties/:propertyId
 
-Fields:
+This is a LANDLORD MANAGEMENT endpoint.
 
-id UUID PRIMARY KEY DEFAULT gen_random_uuid()
-application_id UUID NOT NULL
-proposed_by_user_id UUID NOT NULL
-start_time TIMESTAMPTZ NOT NULL
-end_time TIMESTAMPTZ
-status TEXT NOT NULL DEFAULT 'PROPOSED'
-notes TEXT
-created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+It is NOT the future public property/listing endpoint.
 
-Foreign keys:
+Backend must verify:
 
-application_id → applications.id
-proposed_by_user_id → profiles.id
-
-Approved states:
-
-PROPOSED
-CONFIRMED
-DECLINED
-COMPLETED
-CANCELLED
-NO_SHOW
-
-Constraint:
-
-end_time > start_time
-
-when end_time is provided.
-
-Multiple viewings per application must remain supported.
-
-Do not create a unique constraint on application_id.
+authenticated landlord owns property.
 
 ---
 
-# 26. conversations Table
+# 19. Ownership Privacy
 
-Create:
+For another landlord's property, prefer privacy-preserving:
 
-conversations
+404 PROPERTY_NOT_FOUND
 
-Fields:
+rather than confirming:
 
-id UUID PRIMARY KEY DEFAULT gen_random_uuid()
-listing_id UUID NOT NULL
-tenant_user_id UUID NOT NULL
-landlord_user_id UUID NOT NULL
-created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+"The property exists but belongs to someone else."
 
-Foreign keys:
-
-listing_id → listings.id
-tenant_user_id → profiles.id
-landlord_user_id → profiles.id
-
-Unique:
-
-UNIQUE(listing_id, tenant_user_id, landlord_user_id)
+Use this approach consistently for property ownership endpoints if consistent with existing project error conventions.
 
 ---
 
-# 27. conversation_participants Table
-
-Create:
-
-conversation_participants
-
-Fields:
-
-conversation_id UUID NOT NULL
-user_id UUID NOT NULL
-last_read_at TIMESTAMPTZ
-joined_at TIMESTAMPTZ NOT NULL DEFAULT now()
-
-Primary key:
-
-(conversation_id, user_id)
-
-Foreign keys:
-
-conversation_id → conversations.id
-user_id → profiles.id
-
----
-
-# 28. messages Table
-
-Create:
-
-messages
-
-Fields:
-
-id UUID PRIMARY KEY DEFAULT gen_random_uuid()
-conversation_id UUID NOT NULL
-sender_user_id UUID NOT NULL
-content TEXT NOT NULL
-created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-edited_at TIMESTAMPTZ
-deleted_at TIMESTAMPTZ
-
-Foreign keys:
-
-conversation_id → conversations.id
-sender_user_id → profiles.id
-
-Do not attempt to enforce conversation membership through a plain foreign key.
-
-Membership must later be enforced by service logic and RLS where applicable.
-
----
-
-# 29. notifications Table
-
-Create:
-
-notifications
-
-Fields:
-
-id UUID PRIMARY KEY DEFAULT gen_random_uuid()
-user_id UUID NOT NULL
-type TEXT NOT NULL
-title TEXT NOT NULL
-message TEXT NOT NULL
-entity_type TEXT
-entity_id UUID
-read_at TIMESTAMPTZ
-created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-
-Foreign key:
-
-user_id → profiles.id
-
-`entity_id` is intentionally generic and should not have an invalid multi-table foreign key.
-
----
-
-# 30. reports Table
-
-Create:
-
-reports
-
-Fields:
-
-id UUID PRIMARY KEY DEFAULT gen_random_uuid()
-reporter_user_id UUID NOT NULL
-reported_user_id UUID
-listing_id UUID
-reason TEXT NOT NULL
-description TEXT
-status TEXT NOT NULL DEFAULT 'OPEN'
-resolved_by_user_id UUID
-resolution_notes TEXT
-resolved_at TIMESTAMPTZ
-created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-
-Foreign keys:
-
-reporter_user_id → profiles.id
-reported_user_id → profiles.id
-listing_id → listings.id
-resolved_by_user_id → profiles.id
-
-Approved states:
-
-OPEN
-UNDER_REVIEW
-RESOLVED
-DISMISSED
-
-Approved reasons:
-
-FAKE_LISTING
-INCORRECT_INFORMATION
-PROPERTY_UNAVAILABLE
-DUPLICATE_LISTING
-SUSPICIOUS_LANDLORD
-SUSPICIOUS_TENANT
-HARASSMENT
-OTHER
-
-Critical constraint:
-
-at least one of:
-
-reported_user_id
-listing_id
-
-must be non-null.
-
----
-
-# 31. verification_records Table
-
-Create:
-
-verification_records
-
-Fields:
-
-id UUID PRIMARY KEY DEFAULT gen_random_uuid()
-subject_type TEXT NOT NULL
-subject_id UUID NOT NULL
-verification_type TEXT NOT NULL
-status TEXT NOT NULL DEFAULT 'PENDING'
-reviewed_by_user_id UUID
-notes TEXT
-created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-reviewed_at TIMESTAMPTZ
-
-Approved subject types:
-
-USER
-PROPERTY
-
-Approved verification types:
-
-EMAIL
-PHONE
-LANDLORD_IDENTITY
-PROPERTY_INFORMATION
-PROPERTY_AUTHORITY
-
-Approved states:
-
-PENDING
-VERIFIED
-REJECTED
-EXPIRED
-
-Foreign key:
-
-reviewed_by_user_id → profiles.id
-
-Do NOT create a foreign key for:
-
-subject_id
-
-because the relationship is intentionally polymorphic.
-
-Later service logic must validate the referenced subject.
-
----
-
-# 32. admin_audit_logs Table
-
-Create:
-
-admin_audit_logs
-
-Fields:
-
-id UUID PRIMARY KEY DEFAULT gen_random_uuid()
-admin_user_id UUID NOT NULL
-action TEXT NOT NULL
-target_type TEXT NOT NULL
-target_id UUID
-reason TEXT
-metadata JSONB
-created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-
-Foreign key:
-
-admin_user_id → profiles.id
-
-Do not provide mutation logic for audit history in this task.
-
----
-
-# 33. updated_at Handling
-
-Implement one consistent PostgreSQL mechanism for tables with:
-
+# 20. Property Response
+
+Use an explicit serializer.
+
+May include:
+
+id
+property_type
+address_line_1
+address_line_2
+district
+locality
+neighbourhood
+latitude
+longitude
+bedrooms
+bathrooms
+furnished
+parking_spaces
+verification_status
+archived_at
+created_at
 updated_at
 
-Preferred approach:
+This endpoint is private landlord management, so exact address may be included for the owner.
 
-a reusable trigger function.
+Do not expose landlord_id unless frontend actually requires it.
+
+---
+
+# 21. Update Property
+
+Endpoint:
+
+PATCH /api/v1/properties/:propertyId
+
+Only the owner may update.
+
+Editable fields:
+
+property_type
+address_line_1
+address_line_2
+district
+locality
+neighbourhood
+latitude
+longitude
+bedrooms
+bathrooms
+furnished
+parking_spaces
+
+Protected:
+
+id
+landlord_id
+verification_status
+archived_at
+created_at
+updated_at
+
+---
+
+# 22. Partial Update
+
+PATCH must support partial updates.
+
+Do not require the client to resend the entire property.
+
+However:
+
+the resulting record must remain valid.
+
+Strict validation should reject unknown/protected fields.
+
+---
+
+# 23. Archived Property Editing
+
+Recommended V1 behavior:
+
+an archived property should not be editable through normal PATCH.
+
+Return:
+
+409 Conflict
+
+with a stable code such as:
+
+PROPERTY_ARCHIVED
+
+This avoids changing historical records accidentally.
+
+If existing product rules strongly imply another behavior, document the choice.
+
+---
+
+# 24. Archive Property
+
+Endpoint:
+
+POST /api/v1/properties/:propertyId/archive
+
+Only owner may archive.
+
+Set:
+
+archived_at = current timestamp
+
+Do not hard delete the property.
+
+---
+
+# 25. Archive Idempotency
+
+Recommended:
+
+Archiving an already archived property should be idempotent.
+
+Return the existing archived property rather than creating an error.
+
+Do not repeatedly change archived_at on each request.
+
+Preserve original archive timestamp.
+
+---
+
+# 26. Active Listing Check
+
+TASK-004 runs before listing implementation.
+
+Do not implement listing logic prematurely.
+
+However, structure the property service so TASK-006 can later introduce:
+
+"cannot archive property while live listing exists"
+
+without major redesign.
+
+For now, if no listing workflow exists yet, archive may proceed.
+
+Document this temporary limitation.
+
+---
+
+# 27. No Restore Yet
+
+Do not implement:
+
+restore property
+unarchive property
+
+unless it already exists in approved API documentation.
+
+That can be added later if product testing shows need.
+
+---
+
+# 28. No Hard Delete
+
+Do not implement:
+
+DELETE /properties/:propertyId
+
+Normal user behavior uses:
+
+archive
+
+Historical relationships must remain intact.
+
+---
+
+# 29. Backend Structure
+
+Follow:
+
+Route
+→ Middleware
+→ Controller
+→ Service
+→ Repository
+→ Database
+
+Recommended modules:
+
+propertyRoutes.js
+propertyController.js
+propertyService.js
+propertyRepository.js
+propertyValidators.js
+propertySerializer.js
+
+Exact naming may follow current project conventions.
+
+---
+
+# 30. Middleware
+
+Reuse:
+
+authenticateUser
+loadApplicationProfile
+requireActiveAccount
+requireRole('LANDLORD')
+
+Do not duplicate authentication logic.
+
+---
+
+# 31. Ownership Enforcement
+
+Ownership belongs in backend service/repository workflow.
+
+Required logic concept:
+
+authenticated user
+→ landlord profile
+→ query property where
+   property.id = requested id
+   AND
+   property.landlord_id = authenticated landlord profile id
+
+Do not fetch unrestricted property then trust frontend ownership.
+
+---
+
+# 32. Repository Query Safety
+
+Prefer owner-scoped queries.
 
 Example concept:
 
-set_updated_at()
+findByIdForLandlord(propertyId, landlordProfileId)
 
-Apply it consistently to all tables containing `updated_at`.
-
-Do not depend on every future controller remembering to update timestamps manually.
+rather than controller logic that retrieves any property globally.
 
 ---
 
-# 34. Required Indexes
+# 33. Mass Assignment Tests
 
-At minimum implement indexes for:
+Explicitly attempt:
 
-profiles(role)
+{
+  "landlord_id": "another-landlord"
+}
 
-properties(landlord_id)
+{
+  "verification_status": "VERIFIED"
+}
 
-properties(district, locality)
+{
+  "archived_at": "..."
+}
 
-listings(status)
+{
+  "id": "..."
+}
 
-listings(available_from)
+These must not modify protected state.
 
-listings(monthly_rent)
-
-applications(listing_id)
-
-applications(tenant_id)
-
-applications(listing_id, status)
-
-messages(conversation_id, created_at)
-
-notifications(user_id, created_at DESC)
-
-and an unread-notification partial index:
-
-notifications(user_id)
-WHERE read_at IS NULL
+Strict Zod validation should ideally reject them.
 
 ---
 
-# 35. Foreign Key Index Review
+# 34. Cross-Landlord Security Tests
 
-PostgreSQL does not automatically create indexes for every foreign key.
-
-Review high-traffic foreign-key columns and create useful indexes where obvious.
-
-Examples may include:
-
-property_images(property_id)
-
-saved_listings(listing_id)
-
-application_questions(listing_id)
-
-application_answers(application_id)
-
-application_status_history(application_id)
-
-viewings(application_id)
-
-conversations(listing_id)
-
-conversation_participants(user_id)
-
-reports(listing_id)
-
-Do not create excessive speculative indexes.
-
----
-
-# 36. Delete Behavior
-
-Historical marketplace data should be preserved.
-
-Do not use broad `ON DELETE CASCADE` behavior on core historical entities without explicit justification.
-
-For dependent records that are purely structural and have no independent historical value, limited cascading may be appropriate.
-
-Examples requiring deliberate judgment:
-
-application_question_options → question
-conversation_participants → conversation
-
-Document non-obvious cascade decisions.
-
-Do not let deleting a property automatically erase rental history.
-
----
-
-# 37. Row Level Security
-
-Enable Row Level Security on all application tables in the public schema.
-
-At this stage, default to deny-by-default.
-
-Do not add broad anonymous/authenticated policies merely to make development easier.
-
-Core workflow will use the Node API.
-
-TASK-002 and later tasks will introduce identity-aware access policies where required.
-
----
-
-# 38. RLS Initial Posture
-
-After TASK-001:
-
-Direct browser access using the publishable key should not be able to freely read or write private platform tables.
-
-This is intentional.
-
-Do not create:
-
-USING (true)
-
-or:
-
-WITH CHECK (true)
-
-policies on private marketplace tables without a documented reason.
-
----
-
-# 39. Supabase Secret Key
-
-Do not modify TASK-000 security architecture.
-
-The secret key remains:
-
-backend only.
-
-Never put:
-
-SUPABASE_SECRET_KEY
-
-in:
-
-frontend/
-VITE_*
-SQL files
-seed data
-tests
-documentation values
-
----
-
-# 40. Development Seed Foundation
-
-Create development seed SQL under:
-
-database/seeds/
-
-The seed must be clearly marked:
-
-DEVELOPMENT / TEST ONLY
-
-It must never be automatically run against production.
-
----
-
-# 41. Supabase Auth Seed Limitation
-
-Do not fabricate arbitrary `auth.users` rows in a way that would be unsafe or incompatible with Supabase Auth.
-
-Because `profiles.id` references `auth.users.id`, seed logic should respect the authentication environment.
-
-Choose one of these safe approaches:
-
-1. provide application-data seed helpers designed to work after test auth users are created, or
-2. create local-Supabase-compatible auth seed users using officially supported local development mechanisms, if the tooling is available and the approach is reliable.
-
-Do not weaken the foreign key merely to simplify seed data.
-
-Document the chosen approach.
-
----
-
-# 42. Seed Personas
-
-The intended development personas are:
-
-Tenant A
-Tenant B
+Create/use:
 
 Landlord A
 Landlord B
 
-Admin A
+Property belongs to Landlord B.
 
-Eventually include sample:
+Verify Landlord A cannot:
 
-properties
-listings
+GET
+PATCH
+ARCHIVE
+
+Landlord B's property.
+
+This is mandatory.
+
+---
+
+# 35. Wrong Role Tests
+
+TENANT must not:
+
+POST property
+GET landlord properties
+GET management property
+PATCH property
+ARCHIVE property
+
+Expected:
+
+403
+
+---
+
+# 36. Account Status Tests
+
+SUSPENDED landlord:
+
+blocked
+
+DELETED landlord:
+
+blocked
+
+A valid Supabase authentication token must not bypass account status.
+
+---
+
+# 37. Validation Tests
+
+Required examples:
+
+invalid property_type
+negative bedrooms
+negative bathrooms
+negative parking_spaces
+latitude > 90
+latitude < -90
+longitude > 180
+longitude < -180
+empty district
+empty locality
+invalid UUID
+oversized strings
+
+---
+
+# 38. Pagination Tests
+
+Test:
+
+default page
+default limit
+maximum limit
+invalid negative page
+invalid zero page
+oversized limit
+correct total
+correct total_pages
+
+---
+
+# 39. Frontend Routes
+
+Implement landlord property management foundation:
+
+/landlord/properties
+/landlord/properties/new
+/landlord/properties/:propertyId
+
+Do not create public listing/property pages.
+
+---
+
+# 40. Property List UI
+
+/landlord/properties
+
+Show:
+
+property type
+location
+bedrooms
+bathrooms
+furnished
+archived state where applicable
+
+Actions:
+
+View
+Edit where allowed
+Archive where allowed
+
+Do not show:
+
+rent
 applications
-viewing
-conversation
-messages
-notifications
+listing status
 
-However, seed implementation must remain compatible with real Supabase Auth identity requirements.
-
-Do not create invalid relational data merely to satisfy the list.
+because listings do not exist yet.
 
 ---
 
-# 43. Database Documentation
+# 41. Empty State
 
-Update or create:
+Example:
 
-database/README.md
+No properties yet
 
-Explain:
+Add your first property to prepare it for a future rental listing.
 
-- migration directory
-- migration order
-- how to apply migrations locally
-- how seeds work
-- RLS posture
-- destructive-reset warning
-- production migration rule
+Button:
 
-Keep it concise and practical.
+Add property
 
 ---
 
-# 44. Schema Snapshot
+# 42. Create Property Page
 
-If useful, maintain:
+Route:
 
-database/schema/
+/landlord/properties/new
 
-with a generated or documented schema representation.
+Organize according to UI_RULES:
 
-Do not manually maintain a duplicate SQL schema if it will predictably drift from migrations.
+Property basics
+Location
+Features
 
-Migrations remain the source of truth.
+Do not include photos yet.
 
-If a schema snapshot is generated, document how it is regenerated.
+Property images are TASK-005.
 
----
+Do not include:
 
-# 45. Local Verification
+monthly rent
+deposit
+available date
+listing title
+listing description
 
-If Supabase CLI and its required local runtime are available:
-
-apply migrations to a clean local Supabase database.
-
-Then verify constraints against the running database.
-
-If the environment does not support local Supabase execution, do not install unsafe or excessive infrastructure solely to pretend verification succeeded.
-
-Instead:
-
-- validate SQL as far as the available environment permits
-- run available checks
-- report exactly what could and could not be executed
+These belong to listings.
 
 ---
 
-# 46. Supabase CLI
+# 43. Property Form Fields
 
-Do not make Supabase CLI a global machine requirement.
+Include:
 
-If the project adopts it, prefer a documented local/project-compatible workflow.
+Property type
 
-Do not change the architecture merely because Docker or local Supabase is unavailable.
+Address line 1
+Address line 2
 
----
+District
+Locality
+Neighbourhood
 
-# 47. Database Verification Tests
+Latitude
+Longitude
 
-Where the environment permits actual PostgreSQL execution, add tests proving critical invariants.
+Bedrooms
+Bathrooms
 
-Critical tests:
+Furnished
+Parking spaces
 
-- one live listing per property
-- one cover image per property
-- one application per tenant/listing
-- one accepted application per listing
-- negative rent rejected
-- invalid occupants rejected
-- invalid status rejected
-- report requires a target
-- viewing end time must follow start time
+Coordinates may be optional.
 
----
-
-# 48. Static Verification
-
-Regardless of database runtime availability, Codex must inspect migrations and confirm that each critical invariant has an explicit database-level implementation.
-
-Do not claim runtime database tests were executed if they were not.
+Do not integrate maps/geocoding yet.
 
 ---
 
-# 49. No Business State Machine in SQL
+# 44. Mauritius Location UX
 
-Do not attempt to implement full application workflow authorization through database triggers.
+Keep structured text inputs/selects simple.
 
-For example, TASK-001 should not create complicated triggers controlling:
+Do not introduce an external geolocation API.
 
-SUBMITTED → UNDER_REVIEW
-UNDER_REVIEW → SHORTLISTED
-
-Those rules belong to the Node service layer.
-
-Database constraints should protect structural invariants.
+Do not build a complete Mauritius geographic database in TASK-004 unless one already exists in project scope.
 
 ---
 
-# 50. No Automatic Applicant Decisions
+# 45. Property Detail Page
 
-Do not add:
+Route:
 
-tenant_score
-match_score
-ranking
-recommendation_score
-priority_score
-risk_score
+/landlord/properties/:propertyId
 
-or any similar tenant-selection columns.
+Show property details clearly.
 
-These are outside V1.
+Provide actions:
+
+Edit
+Archive
+
+when valid.
+
+Do not show listing/applicant functionality.
 
 ---
 
-# 51. Money
+# 46. Edit Experience
+
+Editing may happen:
+
+- on the property details page
+- or through a dedicated edit state/page
+
+Choose the simplest implementation consistent with existing UI architecture.
+
+Do not create unnecessary routing complexity.
+
+---
+
+# 47. Archive Confirmation
+
+Archiving is a meaningful action.
+
+Require confirmation.
+
+Example:
+
+Archive this property?
+
+It will no longer appear in your active property list.
+
+Button:
+
+Archive property
+
+---
+
+# 48. Frontend Error States
+
+Handle:
+
+loading
+empty
+validation failure
+API unavailable
+property not found
+forbidden/wrong role
+archived property
+
+Do not build only happy path.
+
+---
+
+# 49. Frontend API Service
+
+Create:
+
+propertyService.js
+
+or equivalent.
+
+Do not scatter raw fetch calls across property components.
+
+Reuse existing authenticated API client.
+
+---
+
+# 50. Frontend Route Security
+
+Only LANDLORD may access:
+
+/landlord/properties
+/landlord/properties/new
+/landlord/properties/:propertyId
+
+TENANT should be redirected/denied appropriately.
+
+Backend remains authoritative.
+
+---
+
+# 51. Responsive Design
+
+Property forms and list must work on mobile.
 
 Use:
 
-NUMERIC(12,2)
+single-column forms on mobile.
 
-for:
-
-monthly_rent
-deposit_amount
-
-Do not use:
-
-FLOAT
-REAL
-DOUBLE PRECISION
-
-for money.
-
-V1 assumes Mauritian Rupees.
-
-Do not add currency complexity unless required.
+No horizontal scrolling for primary tasks.
 
 ---
 
-# 52. Time
+# 52. Accessibility
 
 Use:
 
-TIMESTAMPTZ
+proper labels
+semantic buttons
+keyboard-accessible forms
+visible focus
+accessible validation errors
+clear archive confirmation
 
-for event timestamps.
-
-Do not use timezone-naive timestamps for:
-
-created_at
-updated_at
-submitted_at
-viewing times
-message times
-audit times
-
-Dates such as:
-
-available_from
-preferred_move_date
-
-should remain DATE.
+Do not use clickable divs for actions.
 
 ---
 
-# 53. Naming
+# 53. RLS
 
-Use:
+Do not weaken existing deny-by-default RLS.
 
-snake_case
+Property operations continue through the Node API.
 
-for:
-
-tables
-columns
-constraints where practical
-indexes
-
-Use descriptive names.
-
-Avoid generated names that make debugging unnecessarily difficult.
+Do not create direct frontend table writes.
 
 ---
 
-# 54. Migration Safety
+# 54. Real Supabase Verification
 
-Migrations must:
+Run relevant property integration tests against the configured development Supabase project.
 
-- be deterministic
-- fail clearly when invalid
-- not contain production credentials
-- not destroy existing unrelated data
-- not depend on a particular developer's filesystem
-- not depend on hardcoded database URLs
+Use integration accounts through ignored configuration.
 
----
+Do not print credentials.
 
-# 55. SQL Quality
+At minimum verify against hosted Supabase:
 
-Prefer explicit SQL.
-
-Avoid overly clever dynamic SQL.
-
-Add comments for important non-obvious constraints such as:
-
-- one accepted application
-- one live listing
-- polymorphic verification subject
-- RLS deny-by-default posture
+- landlord creates property
+- landlord lists own property
+- landlord retrieves it
+- landlord updates it
+- landlord archives it
+- another landlord cannot access it
+- tenant cannot create property
 
 ---
 
-# 56. Dependency Changes
+# 55. Test Data Cleanup
 
-Do not add application runtime dependencies for this task unless genuinely required.
+Hosted integration tests must avoid polluting the development database excessively.
 
-Database tooling may be added as a development dependency only when it clearly improves reproducibility.
+Use clearly identifiable integration records.
 
-Document every added dependency.
+Delete test records only where doing so does not contradict normal product behavior and where cleanup is safe.
 
----
+Alternatively use transactional/controlled cleanup tooling.
 
-# 57. Documentation Consistency
-
-If implementation reveals a genuine contradiction in:
-
-docs/DATABASE.md
-
-or another governing document:
-
-do not silently choose a different schema.
-
-Report the conflict.
-
-For small correctness issues that clearly have one safe resolution, implement the minimal correction and update the relevant documentation.
-
-Do not redesign product architecture.
+Do not delete real developer-created marketplace data.
 
 ---
 
-# 58. Required Verification
+# 56. Database Migrations
 
-Before completion, run from repository root:
+Expected:
+
+none
+
+If implementation requires a schema correction:
+
+create a NEW migration.
+
+Do not edit TASK-001 migrations.
+
+Explain any migration.
+
+---
+
+# 57. No Images
+
+Do NOT implement:
+
+Supabase Storage property upload
+property_images API
+cover image
+image ordering
+
+These belong to:
+
+TASK-005.
+
+---
+
+# 58. No Listings
+
+Do NOT implement:
+
+listing creation
+monthly rent
+deposit amount
+availability
+publication
+listing status
+search
+
+These belong to later tasks.
+
+---
+
+# 59. Documentation
+
+Update:
+
+docs/API_SPEC.md
+
+only if needed to clarify property endpoint behavior.
+
+Update relevant docs when implementation materially changes an approved contract.
+
+Do not rewrite unrelated documentation.
+
+---
+
+# 60. Required Automated Verification
+
+Run:
 
 npm run lint
 npm run test
 npm run build
 npm run format:check
+git diff --check
 
-Also run all database-specific validation available in the environment.
+Run database verification.
 
-If package scripts are added for database checks, run them.
-
----
-
-# 59. Existing TASK-000 Regression Protection
-
-TASK-001 must not break the existing bootstrap.
-
-After database work:
-
-- frontend tests must still pass
-- backend tests must still pass
-- frontend build must still pass
-- health endpoint architecture must remain unchanged unless required
-
-Do not regress TASK-000.
+Run relevant hosted Supabase property integration checks.
 
 ---
 
-# 60. Acceptance Criteria
+# 61. Acceptance Criteria
 
-TASK-001 is complete only when:
+TASK-004 is complete only when:
 
-- [ ] Reproducible SQL migrations exist.
-- [ ] All approved V1 tables exist in migrations.
-- [ ] profiles references auth.users correctly.
-- [ ] No password/auth credentials are duplicated.
-- [ ] All documented primary keys exist.
-- [ ] Required foreign keys exist.
-- [ ] Role constraints exist.
-- [ ] Account status constraints exist.
-- [ ] Property type constraints exist.
-- [ ] Verification status constraints exist.
-- [ ] Listing status constraints exist.
-- [ ] Application status constraints exist.
-- [ ] Viewing status constraints exist.
-- [ ] Report status/reason constraints exist.
-- [ ] Verification subject/type/status constraints exist.
-- [ ] Money uses NUMERIC(12,2).
-- [ ] Event timestamps use TIMESTAMPTZ.
-- [ ] Coordinate range checks exist.
-- [ ] One cover image per property enforced at database level.
-- [ ] One live listing per property enforced at database level.
-- [ ] One application per tenant/listing enforced at database level.
-- [ ] One accepted application per listing enforced at database level.
-- [ ] Application submitted_at integrity exists.
-- [ ] Viewing time-order integrity exists.
-- [ ] Report target integrity exists.
-- [ ] Required indexes exist.
-- [ ] updated_at handling is automatic and consistent.
-- [ ] RLS enabled on application tables.
-- [ ] No permissive blanket RLS policies added.
-- [ ] Seed strategy respects Supabase Auth.
-- [ ] database/README.md explains migration/seed workflow.
-- [ ] No production secrets exist.
-- [ ] Existing lint/tests/build still pass.
-- [ ] Database-specific checks available in the environment were run.
-- [ ] No API/product features outside TASK-001 were implemented.
-
----
-
-# 61. Definition of Done
-
-TASK-001 requires:
-
-schema
-+
-constraints
-+
-indexes
-+
-RLS foundation
-+
-migration reproducibility
-+
-seed foundation
-+
-verification
-+
-documentation
-
-Simply creating tables is not enough.
+- [ ] POST /api/v1/properties exists.
+- [ ] Only ACTIVE LANDLORD can create.
+- [ ] landlord_id is derived server-side.
+- [ ] Property validation is implemented.
+- [ ] Protected fields cannot be mass-assigned.
+- [ ] GET /api/v1/landlord/properties exists.
+- [ ] Pagination works.
+- [ ] Archived filtering works.
+- [ ] Only own properties are returned.
+- [ ] GET /api/v1/properties/:propertyId exists.
+- [ ] Property ownership is enforced.
+- [ ] Cross-landlord property access fails.
+- [ ] PATCH /api/v1/properties/:propertyId exists.
+- [ ] Only owner can edit.
+- [ ] Archived property edit is controlled.
+- [ ] verification_status cannot be edited.
+- [ ] landlord_id cannot be edited.
+- [ ] POST /api/v1/properties/:propertyId/archive exists.
+- [ ] Archive uses archived_at, not hard deletion.
+- [ ] Archive is idempotent.
+- [ ] TENANT cannot use landlord property APIs.
+- [ ] SUSPENDED/DELETED landlord remains blocked.
+- [ ] RLS remains deny-by-default.
+- [ ] /landlord/properties frontend exists.
+- [ ] Property creation frontend exists.
+- [ ] Property detail/edit frontend exists.
+- [ ] Archive confirmation exists.
+- [ ] Mobile usability addressed.
+- [ ] Accessibility addressed.
+- [ ] Hosted Supabase property integration passes.
+- [ ] Existing authentication/profile/database tests still pass.
+- [ ] No property images implemented.
+- [ ] No listings implemented.
+- [ ] No secrets committed.
 
 ---
 
 # 62. Completion Report
 
-When finished, report:
+Report:
 
 ## Summary
 
-Describe the database foundation implemented.
+Describe property functionality implemented.
 
-## Migrations Added
-
-List every migration and its purpose.
-
-## Tables Created
-
-List all tables.
-
-## Critical Constraints
-
-Explicitly report implementation of:
-
-- one live listing per property
-- one cover image per property
-- one application per tenant/listing
-- one accepted application per listing
-
-## Indexes Added
-
-Summarize important indexes.
-
-## RLS
+## Backend API
 
 Report:
 
-- which tables have RLS enabled
-- policies created, if any
-- why
+POST /properties
+GET /landlord/properties
+GET /properties/:id
+PATCH /properties/:id
+POST /properties/:id/archive
 
-Expected initial posture:
+## Ownership
 
-RLS enabled with no broad permissive client policies.
+Explain landlord ownership derivation and cross-landlord protection.
 
-## updated_at
+## Validation
 
-Explain the implementation used.
+Summarize property validation.
 
-## Seed Strategy
+## Mass Assignment
 
-Explain how Supabase Auth-linked users are handled safely.
+Report protected-field tests.
 
-## Database Verification
+## Archive Behavior
 
-Report exactly which database checks were executed.
+Explain idempotency and archived-edit behavior.
 
-Distinguish:
+## Frontend
 
-runtime database verification
+Report property list/create/detail/edit flows.
 
-from:
+## Hosted Supabase Verification
 
-static SQL inspection
+Report real integration checks.
 
-Do not imply runtime verification occurred if no database runtime was available.
+Do not reveal credentials.
+
+## Database Changes
+
+Expected:
+
+none.
+
+Explain any migration if required.
 
 ## Tests
-
-Report:
 
 Tests added:
 Tests run:
@@ -1628,38 +1287,34 @@ Tests skipped:
 
 ## Root Verification
 
-Report results for:
-
 npm run lint
 npm run test
 npm run build
 npm run format:check
+git diff --check
 
-## Dependencies Added
-
-List any new dependencies and why they were necessary.
-
-## Documentation Updated
-
-List database/documentation changes.
-
-## Security Notes
+## Security
 
 Confirm:
 
-- no secrets committed
-- RLS posture
-- no frontend secret key
-- no sensitive identity-document tables introduced
+ownership enforced
+RLS unchanged
+verification_status protected
+no secrets exposed
 
 ## Known Limitations
 
-Report genuine limitations.
+Include:
+
+property images deferred to TASK-005
+listings deferred to TASK-006
+
+and any genuine remaining limitation.
 
 ## Recommended Next Task
 
-TASK-002 — Authentication & Authorization
+TASK-005 — Property Images
 
 Then stop.
 
-Do not implement TASK-002 automatically.
+Do not begin TASK-005.

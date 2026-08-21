@@ -181,6 +181,10 @@ AUTH_REQUIRED
 INVALID_TOKEN
 FORBIDDEN
 ROLE_REQUIRED
+ONBOARDING_REQUIRED
+PROFILE_ALREADY_EXISTS
+ACCOUNT_SUSPENDED
+ACCOUNT_DELETED
 RESOURCE_NOT_FOUND
 
 VALIDATION_ERROR
@@ -294,8 +298,9 @@ Possible errors:
 
 ```text
 AUTH_REQUIRED
+INVALID_TOKEN
 VALIDATION_ERROR
-CONFLICT
+PROFILE_ALREADY_EXISTS
 ```
 
 ---
@@ -327,6 +332,20 @@ Response:
 }
 ```
 
+Possible errors:
+
+```text
+AUTH_REQUIRED
+INVALID_TOKEN
+ONBOARDING_REQUIRED
+ACCOUNT_SUSPENDED
+ACCOUNT_DELETED
+```
+
+`ONBOARDING_REQUIRED` uses HTTP 403: the Supabase identity is authenticated,
+but it is not yet authorized as an application user because no `profiles` row
+exists.
+
 ---
 
 # 13. Tenant Profile Endpoints
@@ -341,6 +360,9 @@ Role:
 ```text
 TENANT
 ```
+
+The role-specific row is initialized lazily and idempotently from the verified
+user ID. Clients do not supply a tenant profile ID or owner ID.
 
 ---
 
@@ -394,6 +416,11 @@ Backend must ensure:
 * authenticated user is TENANT
 * tenant updates only their own profile
 * positive numeric constraints hold
+* only the documented role fields are assigned
+
+Names and phone are updated separately through `PATCH /api/v1/profile`, which
+accepts only `first_name`, `last_name`, and `phone` for an ACTIVE TENANT or
+LANDLORD account.
 
 ---
 
@@ -419,6 +446,11 @@ Example POST:
 }
 ```
 
+At least one structured field is required. Obvious case-insensitive duplicates
+for the same tenant return HTTP 409 with code `CONFLICT`. Delete operations are
+scoped to the authenticated tenant; an absent or foreign location returns HTTP
+404 with code `PREFERRED_LOCATION_NOT_FOUND`.
+
 ---
 
 # 17. Landlord Profile Endpoints
@@ -435,6 +467,11 @@ LANDLORD
 ```
 
 Verification status must not be editable by the landlord.
+
+The role-specific row is initialized lazily and idempotently. GET returns safe
+base fields (`first_name`, `last_name`, `phone`) and `verification_status`.
+PATCH accepts only those three base fields; attempts to submit
+`verification_status` or ownership/account fields fail validation.
 
 ---
 
