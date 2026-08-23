@@ -1,4 +1,4 @@
-# TASK-004 — Property Management Core
+# TASK-017 — Conversations
 
 ## Status
 
@@ -6,39 +6,46 @@ READY
 
 ## Priority
 
-P0 — Core Marketplace
+P0 — Communication Foundation
 
 ## Objective
 
-Implement landlord property-management functionality for the Mauritius Rental Platform.
+Implement secure conversation creation, membership, listing, and detail access between a tenant and the landlord of a rental listing.
 
-This task covers the physical property record only.
+This task covers:
 
-Landlords must be able to:
+- tenant-created conversation for an eligible listing
+- exactly one conversation per tenant/landlord/listing
+- exactly two authorized participants
+- conversation listing
+- conversation detail
+- minimal counterparty identity
+- historical conversation access
+- concurrency-safe/idempotent creation
+- frontend conversation foundation
 
-- create a property
-- list their own properties
-- view one of their own properties
-- edit one of their own properties
-- archive one of their own properties
+Do NOT implement:
 
-This task does NOT include:
+- sending messages
+- message history
+- unread-message counts
+- notifications
+- attachments
+- URL previews
+- typing indicators
+- realtime messaging
+- acceptance
+- additional application transitions
 
-- property image uploads
-- listings
-- rental pricing
-- applications
-- search
-- messaging
-- viewings
-
-Those belong to later tasks.
+TASK-018 owns Messages.
 
 ---
 
-# 1. Required Reading
+## 1. Required Reading
 
-Before coding, read:
+Read all governing documentation and inspect TASK-000 through TASK-016 before changing anything.
+
+Especially:
 
 docs/PRODUCT_SPEC.md
 docs/ARCHITECTURE.md
@@ -47,1128 +54,680 @@ docs/API_SPEC.md
 docs/SECURITY.md
 docs/DEVELOPMENT_RULES.md
 docs/TESTING.md
-docs/ROADMAP.md
-docs/UI_RULES.md
-docs/AUTH_SETUP.md
-database/README.md
 tasks/CURRENT_TASK.md
 
-Inspect all completed TASK-000 through TASK-003 implementation.
-
-Reuse the existing:
-
-- authentication middleware
-- application profile loading
-- ACTIVE-account enforcement
-- role middleware
-- Supabase repository/configuration patterns
-- API response conventions
-- validation patterns
-- frontend API client
-- protected routing
-
-Do not rebuild these foundations.
+Reuse existing authentication, roles, listing eligibility, ownership, serializers, PostgreSQL transaction patterns, RLS posture, frontend API client, and hosted Supabase verification infrastructure.
 
 ---
 
-# 2. Domain Model
+## 2. Existing Tables
 
-A Property is the physical rental asset.
+Use:
 
-A Property is NOT a Listing.
-
-Property contains information such as:
-
-- type
-- physical location
-- bedrooms
-- bathrooms
-- furnishing
-- parking
-
-Listing contains rental-cycle information such as:
-
-- monthly rent
-- deposit
-- availability
-- description
-- publication status
-
-TASK-004 must preserve this distinction.
-
----
-
-# 3. Existing Database Table
-
-Use the existing:
-
-properties
-
-table.
+conversations
 
 Fields:
 
 id
-landlord_id
-property_type
-address_line_1
-address_line_2
-district
-locality
-neighbourhood
-latitude
-longitude
-bedrooms
-bathrooms
-furnished
-parking_spaces
-verification_status
-archived_at
+listing_id
+tenant_user_id
+landlord_user_id
 created_at
 updated_at
 
-Do not modify the schema unless a genuine correctness issue is discovered.
+Existing invariant:
+
+UNIQUE(listing_id, tenant_user_id, landlord_user_id)
+
+Use:
+
+conversation_participants
+
+Fields:
+
+conversation_id
+user_id
+last_read_at
+joined_at
+
+Primary key:
+
+(conversation_id, user_id)
+
+Do not redesign these tables unless a genuine correctness issue requires a new migration.
 
 ---
 
-# 4. Property Types
-
-Approved values:
-
-APARTMENT
-HOUSE
-STUDIO
-ROOM
-TOWNHOUSE
-VILLA
-OTHER
-
-Backend validation must enforce the approved values.
-
-Do not trust arbitrary client values.
-
----
-
-# 5. Verification Status
-
-Property verification status:
-
-UNVERIFIED
-PENDING
-VERIFIED
-REJECTED
-
-TASK-004 only displays the current value where appropriate.
-
-Landlords must NEVER be able to directly change:
-
-verification_status
-
-through property create/edit endpoints.
-
----
-
-# 6. Required API Endpoints
+## 3. Required API
 
 Implement:
 
-POST  /api/v1/properties
-GET   /api/v1/landlord/properties
-GET   /api/v1/properties/:propertyId
-PATCH /api/v1/properties/:propertyId
-POST  /api/v1/properties/:propertyId/archive
+POST /api/v1/listings/:listingId/conversation
 
-Authentication:
+GET /api/v1/conversations
 
-required
+GET /api/v1/conversations/:conversationId
 
-Account:
+Do NOT implement:
 
-ACTIVE
+POST /conversations/:id/messages
+GET /conversations/:id/messages
+POST /conversations/:id/read
 
-Role:
+Those belong to TASK-018.
 
+---
+
+## 4. Who May Create a Conversation
+
+Only an authenticated:
+
+ACTIVE TENANT
+
+may create a conversation through:
+
+POST /api/v1/listings/:listingId/conversation
+
+LANDLORD and ADMIN must not create tenant-side listing conversations through this endpoint.
+
+---
+
+## 5. New Conversation Eligibility
+
+A new conversation may be created only when:
+
+listing.status = ACTIVE
+
+AND
+
+property.archived_at IS NULL
+
+Reuse TASK-007 public-listing eligibility.
+
+Pre-application conversation is allowed.
+
+A tenant does NOT need an application before starting a conversation.
+
+Do not require saved-listing or application state.
+
+---
+
+## 6. Participant Derivation
+
+Never accept participant IDs from client input.
+
+Derive:
+
+tenant_user_id
+from verified authenticated TENANT profile.
+
+Derive:
+
+landlord_user_id
+from:
+
+listing
+→ property
+→ landlord_profiles
+→ profiles.user identity.
+
+listing_id comes from the URL.
+
+Do not trust:
+
+tenant_user_id
+landlord_user_id
+user_id
+participants
+
+from request bodies.
+
+---
+
+## 7. Exactly Two Participants
+
+Every normal V1 conversation must contain exactly:
+
+1 tenant
+1 listing landlord
+
+Create both corresponding:
+
+conversation_participants
+
+rows.
+
+Do not allow arbitrary users to join a conversation.
+
+Do not implement group conversations.
+
+---
+
+## 8. Atomic Conversation Creation
+
+Conversation creation and the two participant rows must behave atomically.
+
+The system must never persist:
+
+conversation without participants
+
+or:
+
+partially populated participant membership.
+
+A narrowly scoped backend-only PostgreSQL transaction function is acceptable if required.
+
+If introduced:
+
+- create a NEW migration
+- historical migrations remain untouched
+- revoke execution from PUBLIC, anon, authenticated
+- service-role backend only
+- no dynamic SQL
+- no credentials
+
+---
+
+## 9. Idempotency
+
+Repeated creation for the same:
+
+listing
+tenant
+landlord
+
+must return the same conversation.
+
+Do not create duplicates.
+
+The database UNIQUE constraint remains the final concurrency guarantee.
+
+---
+
+## 10. Concurrent Creation
+
+Multiple simultaneous POST requests must result in:
+
+one conversation row
+exactly two participant rows
+
+No duplicate membership.
+
+No raw PostgreSQL error.
+
+Add hosted concurrency verification.
+
+---
+
+## 11. Non-Public Listing
+
+Attempting to create a NEW conversation for:
+
+DRAFT
+PENDING_REVIEW
+PAUSED
+RENTED
+CLOSED
+
+or archived-property listing must return:
+
+404 LISTING_NOT_FOUND
+
+Do not reveal private listing existence.
+
+---
+
+## 12. Existing Conversation After Listing Changes
+
+Once a conversation exists, participants may continue to access the conversation container even if the listing later becomes:
+
+PAUSED
+CLOSED
+RENTED
+
+or otherwise non-public.
+
+Do not delete the conversation.
+
+Message-send policy for unavailable listings belongs to TASK-018.
+
+---
+
+## 13. Conversation List
+
+GET /api/v1/conversations
+
+Requires:
+
+verified authentication
+ACTIVE account
+
+Allowed roles:
+
+TENANT
 LANDLORD
 
----
-
-# 7. Create Property
-
-Endpoint:
-
-POST /api/v1/properties
-
-Request example:
-
-{
-  "property_type": "APARTMENT",
-  "address_line_1": "Example Street",
-  "address_line_2": null,
-  "district": "Moka",
-  "locality": "Moka",
-  "neighbourhood": null,
-  "latitude": -20.230,
-  "longitude": 57.500,
-  "bedrooms": 2,
-  "bathrooms": 1,
-  "furnished": true,
-  "parking_spaces": 1
-}
-
-Backend must:
-
-1. verify Supabase identity
-2. load application profile
-3. require ACTIVE
-4. require LANDLORD
-5. resolve authenticated user's landlord_profiles row
-6. validate input
-7. derive landlord_id server-side
-8. create property
-9. return explicit safe response
-
-Expected:
-
-201 Created
-
----
-
-# 8. Landlord Identity
-
-Never accept ownership authority from:
-
-landlord_id
-user_id
-owner_id
-
-in the request.
-
-Property ownership must be derived from:
-
-authenticated user
-→ landlord_profiles
-→ landlord_id
-
-Strict validation should reject protected ownership fields where practical.
-
----
-
-# 9. Lazy Landlord Profile
-
-TASK-003 already provides landlord-profile initialization.
-
-Reuse it.
-
-Do not create an alternative landlord-profile creation mechanism inside property logic.
-
----
-
-# 10. Required Fields
-
-Required:
-
-property_type
-district
-locality
-bedrooms
-bathrooms
-
-Optional:
-
-address_line_1
-address_line_2
-neighbourhood
-latitude
-longitude
-furnished
-parking_spaces
-
-Existing database requirements remain authoritative.
-
----
-
-# 11. Validation
-
-At minimum enforce:
-
-property_type approved
-district non-empty
-locality non-empty
-
-bedrooms integer >= 0
-
-bathrooms numeric >= 0
-
-parking_spaces integer >= 0
-
-latitude between -90 and 90
-
-longitude between -180 and 180
-
-when coordinates are provided.
-
-Text values must:
-
-- be trimmed
-- have reasonable maximum lengths
-- reject meaningless empty strings where required
-
----
-
-# 12. Suggested Text Limits
-
-Unless existing validation conventions establish other reasonable limits:
-
-address_line_1 <= 250
-address_line_2 <= 250
-district <= 100
-locality <= 150
-neighbourhood <= 150
-
-Do not add excessive restrictions that interfere with real Mauritius addresses.
-
----
-
-# 13. Furnished
-
-furnished is:
-
-BOOLEAN
-
-Default:
-
-false
-
-Do not represent this through ambiguous strings such as:
-
-"yes"
-"no"
-
-at API level.
-
----
-
-# 14. Bathrooms
-
-The schema allows:
-
-NUMERIC(3,1)
-
-so values such as:
-
-1
-1.5
-2
-
-are valid where appropriate.
-
-Do not force bathrooms to integer-only if the database explicitly supports half-bath values.
-
----
-
-# 15. List Landlord Properties
-
-Endpoint:
-
-GET /api/v1/landlord/properties
-
-Return only properties owned by the authenticated landlord.
+Return only conversations where the authenticated user is a participant.
 
 Support:
 
 page
 limit
-archived
 
-Recommended:
-
-?page=1
-&limit=20
-&archived=false
-
-Default:
+Defaults:
 
 page = 1
 limit = 20
-archived = false
 
 Maximum:
 
 limit = 100
 
----
+Order:
 
-# 16. List Response
-
-Use:
-
-{
-  "success": true,
-  "data": [],
-  "meta": {
-    "page": 1,
-    "limit": 20,
-    "total": 0,
-    "total_pages": 0
-  }
-}
-
-Do not return properties from other landlords.
+updated_at DESC
+id DESC
 
 ---
 
-# 17. Archived Filtering
+## 14. Conversation List Serializer
 
-Recommended semantics:
+Return only safe information.
 
-archived=false
-
-returns:
-
-archived_at IS NULL
-
-archived=true
-
-returns:
-
-archived_at IS NOT NULL
-
-If parameter is absent:
-
-default to active/non-archived properties.
-
-Do not invent another property status field.
-
----
-
-# 18. Get One Property
-
-Endpoint:
-
-GET /api/v1/properties/:propertyId
-
-This is a LANDLORD MANAGEMENT endpoint.
-
-It is NOT the future public property/listing endpoint.
-
-Backend must verify:
-
-authenticated landlord owns property.
-
----
-
-# 19. Ownership Privacy
-
-For another landlord's property, prefer privacy-preserving:
-
-404 PROPERTY_NOT_FOUND
-
-rather than confirming:
-
-"The property exists but belongs to someone else."
-
-Use this approach consistently for property ownership endpoints if consistent with existing project error conventions.
-
----
-
-# 20. Property Response
-
-Use an explicit serializer.
-
-May include:
+Example concepts:
 
 id
-property_type
-address_line_1
-address_line_2
-district
-locality
-neighbourhood
-latitude
-longitude
-bedrooms
-bathrooms
-furnished
-parking_spaces
-verification_status
-archived_at
 created_at
 updated_at
 
-This endpoint is private landlord management, so exact address may be included for the owner.
+counterparty:
+first_name
+last_name
+profile_photo_url
 
-Do not expose landlord_id unless frontend actually requires it.
+listing context:
+listing_id
+availability
 
----
+For TENANT:
 
-# 21. Update Property
+if listing remains publicly eligible:
+use a minimal safe public listing context.
 
-Endpoint:
+If listing is no longer public:
 
-PATCH /api/v1/properties/:propertyId
+availability = UNAVAILABLE
+listing = null
 
-Only the owner may update.
+Do not leak newly private listing data.
 
-Editable fields:
+For LANDLORD:
 
-property_type
-address_line_1
-address_line_2
-district
-locality
-neighbourhood
-latitude
-longitude
-bedrooms
-bathrooms
-furnished
-parking_spaces
-
-Protected:
+safe owned listing context may include:
 
 id
-landlord_id
-verification_status
-archived_at
-created_at
-updated_at
+title
+status
+
+Do not expose unnecessary property/private fields.
 
 ---
 
-# 22. Partial Update
+## 15. Counterparty Privacy
 
-PATCH must support partial updates.
+Conversation participants may see minimal identity:
 
-Do not require the client to resend the entire property.
+first_name
+last_name
+profile_photo_url
 
-However:
+Do NOT expose:
 
-the resulting record must remain valid.
+email
+phone
+auth user IDs
+tenant IDs
+landlord IDs
+account status
+income
+employer/school
+preferred locations
+Supabase metadata
 
-Strict validation should reject unknown/protected fields.
+TASK-018 may later determine whether contact details ever become appropriate.
 
 ---
 
-# 23. Archived Property Editing
+## 16. Conversation Detail
 
-Recommended V1 behavior:
+GET /api/v1/conversations/:conversationId
 
-an archived property should not be editable through normal PATCH.
+Only a participant may access.
+
+Unrelated user:
+
+404 CONVERSATION_NOT_FOUND
 
 Return:
 
-409 Conflict
+conversation metadata
+safe counterparty identity
+safe listing context
 
-with a stable code such as:
+Do NOT return messages yet.
 
-PROPERTY_ARCHIVED
-
-This avoids changing historical records accidentally.
-
-If existing product rules strongly imply another behavior, document the choice.
+Do NOT return participant internal IDs.
 
 ---
 
-# 24. Archive Property
+## 17. Membership Enforcement
 
-Endpoint:
+Authorization must use conversation membership derived from the database.
 
-POST /api/v1/properties/:propertyId/archive
+Do not trust:
 
-Only owner may archive.
+role alone
+listing ownership alone
+client-supplied participant IDs
 
-Set:
-
-archived_at = current timestamp
-
-Do not hard delete the property.
+A user not present in the conversation must not access it.
 
 ---
 
-# 25. Archive Idempotency
+## 18. last_read_at
 
-Recommended:
+Do not implement unread-message behavior yet.
 
-Archiving an already archived property should be idempotent.
+Creating participant rows may leave:
 
-Return the existing archived property rather than creating an error.
+last_read_at = NULL
 
-Do not repeatedly change archived_at on each request.
+Do not invent unread counts when messages do not exist yet.
 
-Preserve original archive timestamp.
-
----
-
-# 26. Active Listing Check
-
-TASK-004 runs before listing implementation.
-
-Do not implement listing logic prematurely.
-
-However, structure the property service so TASK-006 can later introduce:
-
-"cannot archive property while live listing exists"
-
-without major redesign.
-
-For now, if no listing workflow exists yet, archive may proceed.
-
-Document this temporary limitation.
+TASK-018 will define read-state semantics.
 
 ---
 
-# 27. No Restore Yet
+## 19. RLS
 
-Do not implement:
+Do not weaken deny-by-default RLS.
 
-restore property
-unarchive property
+Conversation reads/writes continue through Node.
 
-unless it already exists in approved API documentation.
+Do not create browser-readable policies for:
 
-That can be added later if product testing shows need.
+conversations
+conversation_participants
 
----
-
-# 28. No Hard Delete
-
-Do not implement:
-
-DELETE /properties/:propertyId
-
-Normal user behavior uses:
-
-archive
-
-Historical relationships must remain intact.
+Direct publishable-key reads/writes must remain blocked.
 
 ---
 
-# 29. Backend Structure
+## 20. Frontend Routes
 
-Follow:
+Implement:
 
-Route
-→ Middleware
-→ Controller
-→ Service
-→ Repository
-→ Database
+/conversations
 
-Recommended modules:
+/conversations/:conversationId
 
-propertyRoutes.js
-propertyController.js
-propertyService.js
-propertyRepository.js
-propertyValidators.js
-propertySerializer.js
+Accessible to authenticated ACTIVE:
 
-Exact naming may follow current project conventions.
+TENANT
+LANDLORD
+
+Do not create a message input.
 
 ---
 
-# 30. Middleware
+## 21. Public Listing Integration
 
-Reuse:
+For an authenticated TENANT viewing an ACTIVE listing, provide an appropriate action such as:
 
-authenticateUser
-loadApplicationProfile
-requireActiveAccount
-requireRole('LANDLORD')
+Contact landlord
 
-Do not duplicate authentication logic.
+or:
 
----
+Start conversation
 
-# 31. Ownership Enforcement
+The action should idempotently create/retrieve the conversation and navigate to:
 
-Ownership belongs in backend service/repository workflow.
+/conversations/:conversationId
 
-Required logic concept:
+Logged-out visitor should receive a login affordance.
 
-authenticated user
-→ landlord profile
-→ query property where
-   property.id = requested id
-   AND
-   property.landlord_id = authenticated landlord profile id
-
-Do not fetch unrestricted property then trust frontend ownership.
+LANDLORD should not see the tenant-side start-conversation action.
 
 ---
 
-# 32. Repository Query Safety
+## 22. Conversation Detail UX
 
-Prefer owner-scoped queries.
+Until TASK-018, show:
 
-Example concept:
+- counterparty identity
+- rental context
+- conversation foundation state
 
-findByIdForLandlord(propertyId, landlordProfileId)
+Do not fake message sending.
 
-rather than controller logic that retrieves any property globally.
+Do not render disabled fake chat bubbles or claim messaging works.
 
----
-
-# 33. Mass Assignment Tests
-
-Explicitly attempt:
-
-{
-  "landlord_id": "another-landlord"
-}
-
-{
-  "verification_status": "VERIFIED"
-}
-
-{
-  "archived_at": "..."
-}
-
-{
-  "id": "..."
-}
-
-These must not modify protected state.
-
-Strict Zod validation should ideally reject them.
+A concise temporary state is acceptable during development.
 
 ---
 
-# 34. Cross-Landlord Security Tests
-
-Create/use:
-
-Landlord A
-Landlord B
-
-Property belongs to Landlord B.
-
-Verify Landlord A cannot:
-
-GET
-PATCH
-ARCHIVE
-
-Landlord B's property.
-
-This is mandatory.
-
----
-
-# 35. Wrong Role Tests
-
-TENANT must not:
-
-POST property
-GET landlord properties
-GET management property
-PATCH property
-ARCHIVE property
-
-Expected:
-
-403
-
----
-
-# 36. Account Status Tests
-
-SUSPENDED landlord:
-
-blocked
-
-DELETED landlord:
-
-blocked
-
-A valid Supabase authentication token must not bypass account status.
-
----
-
-# 37. Validation Tests
-
-Required examples:
-
-invalid property_type
-negative bedrooms
-negative bathrooms
-negative parking_spaces
-latitude > 90
-latitude < -90
-longitude > 180
-longitude < -180
-empty district
-empty locality
-invalid UUID
-oversized strings
-
----
-
-# 38. Pagination Tests
-
-Test:
-
-default page
-default limit
-maximum limit
-invalid negative page
-invalid zero page
-oversized limit
-correct total
-correct total_pages
-
----
-
-# 39. Frontend Routes
-
-Implement landlord property management foundation:
-
-/landlord/properties
-/landlord/properties/new
-/landlord/properties/:propertyId
-
-Do not create public listing/property pages.
-
----
-
-# 40. Property List UI
-
-/landlord/properties
+## 23. Conversation List UX
 
 Show:
 
-property type
-location
-bedrooms
-bathrooms
-furnished
-archived state where applicable
-
-Actions:
-
-View
-Edit where allowed
-Archive where allowed
+counterparty name
+safe rental context
+created/updated date where useful
 
 Do not show:
 
-rent
-applications
-listing status
+unread count
+last message
+message preview
 
-because listings do not exist yet.
+because messages are not implemented.
 
 ---
 
-# 41. Empty State
+## 24. Empty State
 
 Example:
 
-No properties yet
+No conversations yet.
 
-Add your first property to prepare it for a future rental listing.
+When you contact a landlord about a rental, the conversation will appear here.
 
-Button:
+For landlord:
 
-Add property
-
----
-
-# 42. Create Property Page
-
-Route:
-
-/landlord/properties/new
-
-Organize according to UI_RULES:
-
-Property basics
-Location
-Features
-
-Do not include photos yet.
-
-Property images are TASK-005.
-
-Do not include:
-
-monthly rent
-deposit
-available date
-listing title
-listing description
-
-These belong to listings.
+No tenant conversations yet.
 
 ---
 
-# 43. Property Form Fields
+## 25. Security Tests
 
-Include:
+Test:
 
-Property type
+TENANT creates conversation for ACTIVE listing.
 
-Address line 1
-Address line 2
+LANDLORD cannot use tenant create endpoint.
 
-District
-Locality
-Neighbourhood
+SUSPENDED/DELETED user blocked.
 
-Latitude
-Longitude
+Tenant A cannot access Tenant B conversation.
 
-Bedrooms
-Bathrooms
+Landlord A cannot access Landlord B conversation.
 
-Furnished
-Parking spaces
+Unrelated authenticated user receives 404.
 
-Coordinates may be optional.
-
-Do not integrate maps/geocoding yet.
+Protected participant fields cannot be mass-assigned.
 
 ---
 
-# 44. Mauritius Location UX
+## 26. Idempotency & Concurrency Tests
 
-Keep structured text inputs/selects simple.
+Mandatory:
 
-Do not introduce an external geolocation API.
+repeated creation returns same conversation.
 
-Do not build a complete Mauritius geographic database in TASK-004 unless one already exists in project scope.
+multiple concurrent creates produce:
 
----
+one conversation
+two participant rows
 
-# 45. Property Detail Page
+No duplicate memberships.
 
-Route:
-
-/landlord/properties/:propertyId
-
-Show property details clearly.
-
-Provide actions:
-
-Edit
-Archive
-
-when valid.
-
-Do not show listing/applicant functionality.
+No raw database errors.
 
 ---
 
-# 46. Edit Experience
+## 27. Eligibility Tests
 
-Editing may happen:
+New conversation:
 
-- on the property details page
-- or through a dedicated edit state/page
+ACTIVE listing → succeeds
 
-Choose the simplest implementation consistent with existing UI architecture.
+DRAFT → 404
+PENDING_REVIEW → 404
+PAUSED → 404
+RENTED → 404
+CLOSED → 404
+archived property → 404
 
-Do not create unnecessary routing complexity.
-
----
-
-# 47. Archive Confirmation
-
-Archiving is a meaningful action.
-
-Require confirmation.
-
-Example:
-
-Archive this property?
-
-It will no longer appear in your active property list.
-
-Button:
-
-Archive property
+Existing conversation remains readable after listing becomes unavailable.
 
 ---
 
-# 48. Frontend Error States
+## 28. Privacy Tests
 
-Handle:
+Explicitly verify responses do NOT expose:
 
-loading
-empty
-validation failure
-API unavailable
-property not found
-forbidden/wrong role
-archived property
+tenant_user_id
+landlord_user_id
+participant user IDs
+email
+phone
+income
+employment
+preferred locations
+account status
+exact address
+coordinates
+Storage paths
+Supabase metadata
 
-Do not build only happy path.
-
----
-
-# 49. Frontend API Service
-
-Create:
-
-propertyService.js
-
-or equivalent.
-
-Do not scatter raw fetch calls across property components.
-
-Reuse existing authenticated API client.
+For a TENANT, a now-unavailable listing must not leak private listing fields through the conversation API.
 
 ---
 
-# 50. Frontend Route Security
+## 29. Frontend Tests
 
-Only LANDLORD may access:
+At minimum:
 
-/landlord/properties
-/landlord/properties/new
-/landlord/properties/:propertyId
+conversation routes protected
 
-TENANT should be redirected/denied appropriately.
+TENANT start-conversation action
 
-Backend remains authoritative.
+logged-out login affordance
 
----
+LANDLORD does not see tenant creation action
 
-# 51. Responsive Design
+conversation creation redirects correctly
 
-Property forms and list must work on mobile.
+conversation list
 
-Use:
+empty state
 
-single-column forms on mobile.
+conversation detail
 
-No horizontal scrolling for primary tasks.
+counterparty display
 
----
+unavailable listing presentation
 
-# 52. Accessibility
+cross-role/access protection
 
-Use:
+no message form exists
 
-proper labels
-semantic buttons
-keyboard-accessible forms
-visible focus
-accessible validation errors
-clear archive confirmation
-
-Do not use clickable divs for actions.
+no unread UI exists
 
 ---
 
-# 53. RLS
+## 30. Hosted Supabase Verification
 
-Do not weaken existing deny-by-default RLS.
+Using controlled integration records verify:
 
-Property operations continue through the Node API.
+TENANT creates ACTIVE-listing conversation
 
-Do not create direct frontend table writes.
+repeat creation returns same conversation
 
----
+concurrent creation produces one conversation/two participants
 
-# 54. Real Supabase Verification
+LANDLORD sees conversation in own list
 
-Run relevant property integration tests against the configured development Supabase project.
+TENANT sees conversation in own list
 
-Use integration accounts through ignored configuration.
+unrelated tenant cannot access it
 
-Do not print credentials.
+unrelated landlord cannot access it
 
-At minimum verify against hosted Supabase:
+non-public listing cannot receive NEW conversation
 
-- landlord creates property
-- landlord lists own property
-- landlord retrieves it
-- landlord updates it
-- landlord archives it
-- another landlord cannot access it
-- tenant cannot create property
+existing conversation remains accessible after listing becomes non-public
 
----
+private listing data remains hidden from tenant
 
-# 55. Test Data Cleanup
+minimal counterparty identity only
 
-Hosted integration tests must avoid polluting the development database excessively.
+publishable-key direct conversations/participants reads and writes remain blocked
 
-Use clearly identifiable integration records.
-
-Delete test records only where doing so does not contradict normal product behavior and where cleanup is safe.
-
-Alternatively use transactional/controlled cleanup tooling.
-
-Do not delete real developer-created marketplace data.
+all previous hosted regressions remain healthy.
 
 ---
 
-# 56. Database Migrations
+## 31. Database Changes
+
+A NEW migration is acceptable if required for atomic conversation/participant creation.
+
+Do not modify historical migrations.
+
+---
+
+## 32. Dependencies
 
 Expected:
 
-none
-
-If implementation requires a schema correction:
-
-create a NEW migration.
-
-Do not edit TASK-001 migrations.
-
-Explain any migration.
+none.
 
 ---
 
-# 57. No Images
-
-Do NOT implement:
-
-Supabase Storage property upload
-property_images API
-cover image
-image ordering
-
-These belong to:
-
-TASK-005.
-
----
-
-# 58. No Listings
-
-Do NOT implement:
-
-listing creation
-monthly rent
-deposit amount
-availability
-publication
-listing status
-search
-
-These belong to later tasks.
-
----
-
-# 59. Documentation
+## 33. Documentation
 
 Update:
 
 docs/API_SPEC.md
 
-only if needed to clarify property endpoint behavior.
+Document:
 
-Update relevant docs when implementation materially changes an approved contract.
+POST /listings/:listingId/conversation
+GET /conversations
+GET /conversations/:conversationId
 
-Do not rewrite unrelated documentation.
+Document:
+
+- tenant-only creation
+- ACTIVE-listing requirement for NEW conversations
+- idempotency
+- participant privacy
+- historical conversation access
+- messages deferred
 
 ---
 
-# 60. Required Automated Verification
+## 34. Required Verification
 
 Run:
 
@@ -1178,106 +737,101 @@ npm run build
 npm run format:check
 git diff --check
 
-Run database verification.
+Run:
 
-Run relevant hosted Supabase property integration checks.
+database verification
+all hosted regressions
+TASK-017 hosted conversation/concurrency checks.
 
 ---
 
-# 61. Acceptance Criteria
+## 35. Acceptance Criteria
 
-TASK-004 is complete only when:
+TASK-017 is complete only when:
 
-- [ ] POST /api/v1/properties exists.
-- [ ] Only ACTIVE LANDLORD can create.
-- [ ] landlord_id is derived server-side.
-- [ ] Property validation is implemented.
-- [ ] Protected fields cannot be mass-assigned.
-- [ ] GET /api/v1/landlord/properties exists.
-- [ ] Pagination works.
-- [ ] Archived filtering works.
-- [ ] Only own properties are returned.
-- [ ] GET /api/v1/properties/:propertyId exists.
-- [ ] Property ownership is enforced.
-- [ ] Cross-landlord property access fails.
-- [ ] PATCH /api/v1/properties/:propertyId exists.
-- [ ] Only owner can edit.
-- [ ] Archived property edit is controlled.
-- [ ] verification_status cannot be edited.
-- [ ] landlord_id cannot be edited.
-- [ ] POST /api/v1/properties/:propertyId/archive exists.
-- [ ] Archive uses archived_at, not hard deletion.
-- [ ] Archive is idempotent.
-- [ ] TENANT cannot use landlord property APIs.
-- [ ] SUSPENDED/DELETED landlord remains blocked.
+- [ ] Conversation creation endpoint exists.
+- [ ] Only ACTIVE TENANT may create.
+- [ ] New conversation requires publicly eligible ACTIVE listing.
+- [ ] Pre-application conversation is allowed.
+- [ ] Tenant identity is backend-derived.
+- [ ] Landlord identity is backend-derived.
+- [ ] Exactly two participants are created.
+- [ ] Conversation + membership creation is atomic.
+- [ ] Repeated creation is idempotent.
+- [ ] Concurrent creation remains one conversation.
+- [ ] Conversation list exists.
+- [ ] Conversation detail exists.
+- [ ] Only participants may access.
+- [ ] Cross-user access returns privacy-safe 404.
+- [ ] Existing conversation survives listing becoming unavailable.
+- [ ] Tenant does not gain private listing access through conversation history.
+- [ ] Counterparty identity is minimal.
+- [ ] No contact/private profile information exposed.
 - [ ] RLS remains deny-by-default.
-- [ ] /landlord/properties frontend exists.
-- [ ] Property creation frontend exists.
-- [ ] Property detail/edit frontend exists.
-- [ ] Archive confirmation exists.
-- [ ] Mobile usability addressed.
-- [ ] Accessibility addressed.
-- [ ] Hosted Supabase property integration passes.
-- [ ] Existing authentication/profile/database tests still pass.
-- [ ] No property images implemented.
-- [ ] No listings implemented.
+- [ ] Direct browser table access remains blocked.
+- [ ] /conversations frontend exists.
+- [ ] /conversations/:id frontend exists.
+- [ ] Tenant listing action creates/reuses conversation.
+- [ ] No message sending implemented.
+- [ ] No unread counts implemented.
+- [ ] No notification functionality implemented.
+- [ ] Hosted checks pass.
+- [ ] Previous regressions pass.
 - [ ] No secrets committed.
 
 ---
 
-# 62. Completion Report
+## 36. Completion Report
 
 Report:
 
-## Summary
+### Summary
 
-Describe property functionality implemented.
+### API
 
-## Backend API
+List all three endpoints.
 
-Report:
+### Creation Eligibility
 
-POST /properties
-GET /landlord/properties
-GET /properties/:id
-PATCH /properties/:id
-POST /properties/:id/archive
+Explain ACTIVE-listing and tenant-only rules.
 
-## Ownership
+### Participants
 
-Explain landlord ownership derivation and cross-landlord protection.
+Explain backend participant derivation.
 
-## Validation
+### Atomicity & Idempotency
 
-Summarize property validation.
+Explain conversation + participant transaction and concurrency behavior.
 
-## Mass Assignment
+### Membership Security
 
-Report protected-field tests.
+Explain participant-only access.
 
-## Archive Behavior
+### Privacy
 
-Explain idempotency and archived-edit behavior.
+Explain counterparty and listing serialization, especially unavailable listings.
 
-## Frontend
+### Frontend
 
-Report property list/create/detail/edit flows.
+Report conversation list/detail/start-conversation behavior.
 
-## Hosted Supabase Verification
+### Messages
 
-Report real integration checks.
+Explicitly confirm messages were NOT implemented.
 
-Do not reveal credentials.
+### Database Changes
 
-## Database Changes
+List any new migration/function.
 
-Expected:
+### Dependencies
 
-none.
+Expected: none.
 
-Explain any migration if required.
+### Hosted Supabase Verification
 
-## Tests
+Report real checks.
+
+### Tests
 
 Tests added:
 Tests run:
@@ -1285,7 +839,7 @@ Tests passed:
 Tests failed:
 Tests skipped:
 
-## Root Verification
+### Root Verification
 
 npm run lint
 npm run test
@@ -1293,28 +847,30 @@ npm run build
 npm run format:check
 git diff --check
 
-## Security
+### Security
 
 Confirm:
 
-ownership enforced
 RLS unchanged
-verification_status protected
-no secrets exposed
+participants backend-derived
+direct browser access blocked
+contact/private data not exposed
+no credentials exposed.
 
-## Known Limitations
+### Known Limitations
 
 Include:
 
-property images deferred to TASK-005
-listings deferred to TASK-006
+messages deferred to TASK-018
+read/unread state deferred
+realtime deferred
+notifications deferred
+attachments deferred.
 
-and any genuine remaining limitation.
+### Recommended Next Task
 
-## Recommended Next Task
-
-TASK-005 — Property Images
+TASK-018 — Messages
 
 Then stop.
 
-Do not begin TASK-005.
+Do not begin TASK-018.

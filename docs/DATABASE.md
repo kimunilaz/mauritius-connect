@@ -787,6 +787,43 @@ application_status_history
 
 atomically where possible.
 
+TASK-012 implements the first transition with the narrowly scoped
+`submit_application_transaction` database function. The Node API completes
+authentication, ACTIVE-account, TENANT-role, ownership, and readiness checks,
+then calls the function through the backend-only privileged client. Inside one
+transaction the function rechecks ownership and listing eligibility, locks the
+application, validates the current required fields/questions/answers, performs
+the conditional `DRAFT` to `SUBMITTED` update, assigns `submitted_at`, and
+inserts its status-history row.
+
+Submission and `mutate_application_question_transaction` take the same
+transaction-scoped PostgreSQL advisory lock derived from `listing_id`. This
+serializes first submission against structural question changes without
+moving unrelated workflow policy into SQL. An application row lock serializes
+repeated submit calls. The partial unique index
+`application_status_history_one_submission_idx` is the final backstop against
+more than one `DRAFT` to `SUBMITTED` history record per application.
+
+The `application_answers_require_draft` trigger locks the parent application
+and rejects answer insert, update, or delete after it leaves DRAFT. This closes
+the answer-write race at the same database boundary as submission.
+
+TASK-015 adds the narrowly scoped
+`transition_application_status_transaction` function for review, shortlist,
+rejection, and tenant withdrawal. The Node API first performs authentication,
+ACTIVE-account, role, application ownership, and explicit-endpoint checks. The
+function then locks the application row, rechecks the actor relationship and
+role against application tables, compares the status observed by the service
+with the locked status, applies one approved edge, and inserts one
+actor-attributed `application_status_history` row in the same transaction.
+
+Identical target retries are read-only and succeed only when corresponding
+history exists. Different targets racing from the same observed state cannot
+both commit. `withdrawn_at` is assigned only by a successful transition to
+`WITHDRAWN`. The function is `SECURITY DEFINER` with an empty search path,
+contains no dynamic SQL, is revoked from `PUBLIC`, `anon`, and `authenticated`,
+and is executable only by `service_role`.
+
 The service layer validates:
 
 * user
@@ -837,6 +874,7 @@ Constraint:
 
 ```text
 end_time > start_time
+at most one open viewing per application where status is PROPOSED or CONFIRMED
 ```
 
 when `end_time` exists.
@@ -860,7 +898,12 @@ Relationship:
 applications 1 : many viewings
 ```
 
-Do not enforce one viewing per application.
+Do not enforce one viewing per application. TASK-016 adds a partial unique
+index only for open states (`PROPOSED`, `CONFIRMED`), preserving any number of
+terminal historical viewings. Backend-only transaction functions serialize the
+first proposal/application transition and each viewing action. Completing a
+viewing atomically moves its application from `VIEWING_INVITED` to
+`VIEWING_COMPLETED` and writes exactly one application-status-history row.
 
 ---
 

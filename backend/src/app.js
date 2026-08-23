@@ -7,7 +7,23 @@ import { notFoundHandler } from './middleware/notFoundHandler.js';
 import { requestLogger } from './middleware/requestLogger.js';
 import { createApiRouter } from './routes/index.js';
 
-export function createApp({ authService, profileService } = {}) {
+export function createApp({
+  authService,
+  profileService,
+  propertyService,
+  propertyImageService,
+  listingService,
+  publicListingService,
+  savedListingService,
+  applicationQuestionService,
+  applicationService,
+  applicationAnswerService,
+  applicationSubmissionService,
+  landlordApplicationService,
+  applicationTransitionService,
+  viewingService,
+  conversationService,
+} = {}) {
   const app = express();
 
   app.disable('x-powered-by');
@@ -16,7 +32,26 @@ export function createApp({ authService, profileService } = {}) {
   app.use(express.json({ limit: '100kb' }));
   app.use(requestLogger);
 
-  app.use('/api/v1', createApiRouter({ authService, profileService }));
+  app.use(
+    '/api/v1',
+    createApiRouter({
+      authService,
+      profileService,
+      propertyService,
+      propertyImageService,
+      listingService,
+      publicListingService,
+      savedListingService,
+      applicationQuestionService,
+      applicationService,
+      applicationAnswerService,
+      applicationSubmissionService,
+      landlordApplicationService,
+      applicationTransitionService,
+      viewingService,
+      conversationService,
+    }),
+  );
 
   app.use(notFoundHandler);
   app.use(errorHandler);

@@ -47,14 +47,30 @@ export default function AccountPage() {
         </dl>
         <p>Manage the profile details used for your platform experience.</p>
         {profile.role === 'TENANT' ? (
-          <Link className="primary-link-button" to="/tenant/profile">
-            Manage tenant profile
-          </Link>
+          <div className="account-actions">
+            <Link className="primary-link-button" to="/tenant/profile">
+              Manage tenant profile
+            </Link>
+            <Link className="primary-link-button" to="/tenant/saved-listings">
+              Saved rentals
+            </Link>
+            <Link className="primary-link-button" to="/tenant/applications">
+              My applications
+            </Link>
+          </div>
         ) : null}
         {profile.role === 'LANDLORD' ? (
-          <Link className="primary-link-button" to="/landlord/profile">
-            Manage landlord profile
-          </Link>
+          <div className="account-actions">
+            <Link className="primary-link-button" to="/landlord/profile">
+              Manage landlord profile
+            </Link>
+            <Link className="primary-link-button" to="/landlord/properties">
+              Manage properties
+            </Link>
+            <Link className="primary-link-button" to="/landlord/listings">
+              Manage listings
+            </Link>
+          </div>
         ) : null}
         {message ? (
           <p className="form-message" role="alert">

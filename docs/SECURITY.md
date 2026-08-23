@@ -948,6 +948,11 @@ Do not trust:
 
 Validate the actual uploaded content.
 
+TASK-005 decodes and safely re-encodes accepted raster images with `sharp`.
+This removes embedded EXIF, GPS, comments, profiles, and other source metadata;
+orientation is applied to pixels before metadata is discarded. Decode work is
+bounded by file size and pixel count.
+
 ---
 
 # 43. Allowed Property Image Types
@@ -1062,7 +1067,32 @@ If direct browser-to-Supabase uploads are introduced later, they require careful
 
 Buckets containing private files must not be public.
 
-Property images intended for public listings may use a deliberately public delivery mechanism, but upload/delete privileges must remain restricted.
+The V1 `property-images` bucket remains private and has no publishable-key
+object policies. The Node backend alone creates, mutates, and deletes objects
+after authentication, ACTIVE-account, LANDLORD-role, and owner-scoped property
+checks. It returns 15-minute signed download URLs to an owning landlord,
+without exposing or persisting the underlying Storage path.
+
+For public presentation, the Node backend first resolves an ACTIVE listing on
+a non-archived property through an explicit public repository query. Only then
+may it sign that property's cover image for search or its ordered images for
+detail. Non-public, archived, and unlisted properties cannot use the public
+routes as signing oracles. Individual signing failures degrade to a missing
+presentation image without exposing paths. The bucket and objects remain
+private, and public clients receive no upload, mutation, unsigned-read, or
+direct-table permission.
+
+Saved-listing relationships are tenant-private and are read or mutated only
+through the authenticated Node API. A new save is allowed only after the
+backend confirms the listing is ACTIVE and its property is not archived. If a
+saved listing later becomes non-public, the relationship is intentionally kept
+so the tenant can remove it, but the API reduces presentation to the
+relationship identifier, saved timestamp, `UNAVAILABLE` marker, and
+`listing: null`. It must not sign images or serialize listing, property,
+address, owner, or Storage metadata from that old save. Tenant identity is
+always derived from the verified access token and application tenant profile;
+the composite database key provides concurrency protection while deny-by-default
+RLS continues to block direct publishable-key access.
 
 Future identity or verification documents must use private storage and signed or controlled access.
 
@@ -1156,6 +1186,49 @@ This avoids unnecessary server-side request risks.
 ---
 
 # 55. Application State Security
+
+Application-question structure is protected as historical evaluation data.
+The Node API derives listing ownership from the verified LANDLORD identity and
+never accepts a client ownership identifier. Public reads first establish that
+the listing is ACTIVE on a non-archived property, then use an explicit
+serializer that excludes listing, landlord, application, and internal timestamp
+fields.
+
+Once any application for a listing has `submitted_at IS NOT NULL`, the backend
+blocks every question-set mutation with `APPLICATION_QUESTIONS_LOCKED`,
+including create, edit, delete, type, option, required-state, and ordering
+changes. A DRAFT application with no submission timestamp does not activate the
+lock. Browser clients have no direct RLS policy for question or option tables;
+all reads and writes continue through the Node API.
+
+TASK-012 also closes the first-submission race at the database boundary.
+Submission and landlord question mutation use the same transaction-scoped
+per-listing advisory lock. Whichever transaction acquires it first completes
+its readiness/lock recheck before the other proceeds: a completed submission
+locks the question set, while a completed structural mutation forces
+submission to validate the resulting current structure. The application row
+is locked during submission, and answer mutations lock that same parent row,
+so no answer can change between validation and the committed transition.
+
+  The application transaction functions are `SECURITY DEFINER` with an empty search
+path, use no dynamic SQL, and validate actor relationships. Execute privileges
+are revoked from `PUBLIC`, `anon`, and `authenticated`, and granted only to the
+backend role. Browser clients therefore cannot invoke them through the Data
+  API. RLS remains enabled with no application-table browser policies.
+
+  TASK-015 state actions additionally lock the application row, compare the
+  service-observed source state against the locked current state, and recheck
+  the authenticated actor's role and ownership before an atomic status/history
+  write. This prevents different targets racing from the same source state from
+  both committing while keeping identical retries history-free.
+
+TASK-016 viewing transactions lock the relevant application/viewing rows and
+recheck ACTIVE profile role plus tenant/landlord participation inside the
+database operation. A partial unique index independently guarantees one open
+`PROPOSED` or `CONFIRMED` viewing per application. The proposal and transition
+functions use the same restricted `SECURITY DEFINER` posture: empty search
+path, no dynamic SQL, browser-role execute privileges revoked, and service-role
+execution only.
 
 Application states must be controlled by the service layer.
 

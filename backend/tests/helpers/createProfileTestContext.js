@@ -136,6 +136,7 @@ export function createProfileTestContext({
 
   return {
     app: createApp({ authService, profileService }),
+    authService,
     profileService,
     profileRecords,
     tenantRecords,

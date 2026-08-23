@@ -523,8 +523,8 @@ Backend must:
 1. authenticate user
 2. require LANDLORD
 3. resolve landlord profile
-4. ignore any submitted `landlord_id`
-5. attach property to authenticated landlord
+4. reject any submitted `landlord_id`, `user_id`, or `owner_id`
+5. derive `landlord_id` from the authenticated user's landlord profile
 6. validate numeric values
 7. create property
 
@@ -533,6 +533,9 @@ Response:
 ```text
 201 Created
 ```
+
+`verification_status` starts from the database-controlled `UNVERIFIED` default.
+Ownership, verification, archive, ID, and timestamp fields are not accepted.
 
 ---
 
@@ -549,6 +552,10 @@ Supports:
 &limit=20
 &archived=false
 ```
+
+Defaults are page 1, limit 20, and active properties. Limit is capped at 100.
+`archived=true` returns only rows with an archive timestamp. All queries are
+scoped to the authenticated landlord profile.
 
 Response:
 
@@ -577,6 +584,9 @@ This route is for landlord management.
 
 Backend must confirm authenticated landlord owns the property.
 
+Missing and non-owned properties both return HTTP 404 with code
+`PROPERTY_NOT_FOUND`.
+
 Public property information should be exposed through listing endpoints instead.
 
 ---
@@ -594,8 +604,14 @@ Do not allow direct edits to:
 ```text
 landlord_id
 verification_status
+archived_at
+id
 created_at
+updated_at
 ```
+
+PATCH is partial, but requires at least one editable field. Archived properties
+return HTTP 409 with code `PROPERTY_ARCHIVED`.
 
 ---
 
@@ -606,6 +622,11 @@ POST /api/v1/properties/:propertyId/archive
 ```
 
 Backend should reject archival if an active rental listing still exists unless product rules explicitly permit the listing to be closed first.
+
+Until the listing workflow is implemented, TASK-004 archives the owned property
+without a listing check. Repeated archive requests are idempotent and preserve
+the original `archived_at` value. Archival is soft; no property DELETE endpoint
+is provided.
 
 Recommended response:
 
@@ -648,10 +669,15 @@ Backend must verify ownership.
 
 Validate:
 
-* allowed MIME types
-* maximum file size
-* image count
-* safe path generation
+* actual decoded JPEG, PNG, or WebP content
+* 10 MiB maximum file size and 40-megapixel decode limit
+* 20-image property limit
+* generated, ownership-derived Storage path
+
+The request is `multipart/form-data` with exactly one `image` file. The backend
+re-encodes the decoded image before persistence, stripping EXIF and GPS
+metadata. Archived properties return `PROPERTY_ARCHIVED`; non-owned properties
+remain indistinguishable from missing properties.
 
 Response:
 
@@ -660,12 +686,25 @@ Response:
   "success": true,
   "data": {
     "id": "uuid",
-    "storage_path": "properties/...",
+    "url": "short-lived-private-signed-url",
     "is_cover": false,
     "display_order": 2
   }
 }
 ```
+
+The Storage path is private metadata and is not returned. The first image is
+the cover; later images append to the current maximum display order.
+
+`PATCH /api/v1/properties/:propertyId/images/:imageId` accepts exactly one or
+both of `{"is_cover": true}` and a non-negative integer `display_order`.
+Clients cannot unset a cover or assign protected metadata. `DELETE` removes the
+private object and its metadata and returns the remaining ordered images; when
+the cover is deleted, the first remaining image becomes cover.
+
+Owned property-detail responses include an ordered `images` array using this
+same safe representation. Signed URLs expire after 15 minutes and are never
+persisted. Landlord property-list responses do not sign every image.
 
 ---
 
@@ -675,6 +714,8 @@ Management:
 
 ```text
 POST   /api/v1/listings
+GET    /api/v1/landlord/listings
+GET    /api/v1/landlord/listings/:listingId
 PATCH  /api/v1/listings/:listingId
 POST   /api/v1/listings/:listingId/publish
 POST   /api/v1/listings/:listingId/pause
@@ -688,6 +729,10 @@ Public:
 GET /api/v1/listings
 GET /api/v1/listings/:listingId
 ```
+
+The public endpoints are not implemented in TASK-006. They remain reserved for
+TASK-007. All TASK-006 management endpoints require an authenticated ACTIVE
+LANDLORD and use owner-scoped property/listing resolution.
 
 ---
 
@@ -720,9 +765,12 @@ Request:
 Backend must:
 
 * verify property belongs to landlord
-* ensure no conflicting live listing exists
+* reject an archived property
 * create as DRAFT
-* ignore any submitted status other than allowed initial state
+* reject client-supplied status and timestamp fields
+
+Multiple private DRAFT rental cycles may exist for a property. The one-live
+listing conflict is enforced when a draft is submitted for review.
 
 Response:
 
@@ -754,6 +802,22 @@ closed_at
 
 Use dedicated state-transition endpoints.
 
+Editable fields are limited to title, description, rent, deposit, availability,
+lease duration, occupants, and pets. `property_id` is immutable. Normal edits
+are allowed only for DRAFT and PAUSED; PENDING_REVIEW, ACTIVE, RENTED, and CLOSED
+return `LISTING_NOT_EDITABLE`.
+
+Private landlord reads are:
+
+```text
+GET /api/v1/landlord/listings
+GET /api/v1/landlord/listings/:listingId
+```
+
+The list supports `page`, `limit`, and approved `status` filters and signs only
+the cover image. Detail returns the owned property summary and temporary signed
+property images. Another landlord's listing returns `LISTING_NOT_FOUND`.
+
 ---
 
 # 29. Publish Listing
@@ -764,19 +828,29 @@ POST /api/v1/listings/:listingId/publish
 
 Backend validates listing completeness.
 
-Possible transition:
+The only landlord publish transition is:
 
 ```text
 DRAFT → PENDING_REVIEW
 ```
 
-or, if moderation is disabled during private beta:
+The following alternative is explicitly prohibited in TASK-006:
 
 ```text
 DRAFT → ACTIVE
 ```
 
-The behavior must be controlled by configuration/product policy.
+"Publish" means submit for review; it never makes the listing public or ACTIVE.
+The PENDING_REVIEW to ACTIVE transition remains a future administrative action
+and has no TASK-006 landlord endpoint.
+
+Before submission, the backend re-checks required listing fields, ownership,
+non-archived property state, at least one property image, a cover image, and no
+other PENDING_REVIEW/ACTIVE/PAUSED listing for the property. Failures use
+`LISTING_NOT_READY` with safe readiness reason codes or
+`LIVE_LISTING_ALREADY_EXISTS`. The existing partial unique database index is
+the final concurrency guarantee. Successful submission sets `published_at`
+server-side.
 
 ---
 
@@ -817,6 +891,8 @@ POST /api/v1/listings/:listingId/close
 Allowed from:
 
 ```text
+DRAFT
+PENDING_REVIEW
 ACTIVE
 PAUSED
 ```
@@ -828,6 +904,14 @@ CLOSED
 ```
 
 Do not physically delete listing history.
+
+Close sets `closed_at` server-side and is idempotent for an already CLOSED
+listing. RENTED cannot be closed or otherwise mutated by a landlord. Closing a
+listing does not archive its property.
+
+Property archival now checks listings first. A PENDING_REVIEW, ACTIVE, or
+PAUSED listing returns `PROPERTY_HAS_LIVE_LISTING`; a property with DRAFT-only
+listing history may be archived.
 
 ---
 
@@ -849,6 +933,11 @@ ACTIVE
 
 listings.
 
+The joined property must also have `archived_at IS NULL`. A hidden listing or
+an ACTIVE listing attached to an archived property returns no public result.
+Public browsing never requires an application profile, and an optional bearer
+header does not change visibility.
+
 Supported filters:
 
 ```text
@@ -862,13 +951,26 @@ bathrooms
 property_type
 furnished
 available_from
-minimum_lease_months
 pets_allowed
-parking
 page
 limit
 sort
 ```
+
+Filter semantics:
+
+- `district`, `locality`, and `neighbourhood` are bounded, normalized
+  case-insensitive exact matches against structured fields.
+- `property_type` accepts `APARTMENT`, `HOUSE`, `STUDIO`, `ROOM`, `TOWNHOUSE`,
+  `VILLA`, or `OTHER`.
+- `min_rent` and `max_rent` are inclusive and must form a valid non-negative
+  range.
+- `bedrooms` and `bathrooms` are inclusive minimums.
+- `furnished` and `pets_allowed` accept only `true` or `false`.
+- `available_from=YYYY-MM-DD` means available on or before that date.
+
+Pagination defaults to page 1 and limit 20. Limit 100 is the maximum. Invalid,
+unknown, negative, zero, or excessive query values return `VALIDATION_ERROR`.
 
 Example:
 
@@ -883,11 +985,15 @@ Example:
 Initial allowed sorts:
 
 ```text
-NEWEST
-RENT_LOW_TO_HIGH
-RENT_HIGH_TO_LOW
-AVAILABLE_SOONEST
+newest
+rent_low
+rent_high
+available_soon
 ```
+
+The default is `newest`. Sorts map respectively to `published_at DESC`,
+`monthly_rent ASC`, `monthly_rent DESC`, and `available_from ASC`. Every sort
+uses listing UUID as a deterministic final tie-breaker.
 
 Do not allow arbitrary SQL order fields from query strings.
 
@@ -920,14 +1026,16 @@ Example:
         "furnished": true,
         "parking_spaces": 1
       },
-      "cover_image": "..."
+      "cover_image_url": "short-lived signed URL or null"
     }
   ],
   "meta": {}
 }
 ```
 
-Do not expose exact private address unless product policy explicitly allows it.
+Search cards are built by an explicit public serializer. They do not expose
+property IDs, owner IDs, exact addresses, coordinates, landlord contact data,
+verification evidence, Storage paths, listing status, or raw joined rows.
 
 ---
 
@@ -937,22 +1045,33 @@ Do not expose exact private address unless product policy explicitly allows it.
 GET /api/v1/listings/:listingId
 ```
 
-Public if listing is ACTIVE.
+Public only when the listing is ACTIVE and its property is not archived.
+Otherwise return `404 LISTING_NOT_FOUND`, including for guessed UUIDs of DRAFT,
+PENDING_REVIEW, PAUSED, RENTED, and CLOSED listings.
 
-May return additional:
+Returns public-safe listing fields plus:
 
 * images
-* landlord trust indicators
-* application questions
-* amenities
-* listing details
+* listing description and rental conditions
+* approximate location and property facts
+* a true property-information verification indicator when supported by a
+  VERIFIED database status
 
 Must not expose:
 
-* landlord private phone unless intentionally part of product
+* exact street address or coordinates
+* landlord identifiers, email, or phone
 * private tenant data
 * internal moderation notes
 * verification documents
+* Storage paths
+
+Image objects contain only `id`, a 15-minute presentation `url`,
+`display_order`, and `is_cover`, in deterministic image order. The private
+bucket is unchanged. The backend signs images only after public listing
+eligibility succeeds and never persists signed URLs. Search signs only the
+cover. A failed cover signature produces `cover_image_url: null`; an individual
+detail image that cannot be signed is omitted without exposing its path.
 
 ---
 
@@ -960,6 +1079,7 @@ Must not expose:
 
 ```text
 GET    /api/v1/tenant/saved-listings
+GET    /api/v1/tenant/saved-listings/:listingId/status
 POST   /api/v1/listings/:listingId/save
 DELETE /api/v1/listings/:listingId/save
 ```
@@ -967,6 +1087,29 @@ DELETE /api/v1/listings/:listingId/save
 Role:
 
 TENANT.
+
+All four routes require a verified Supabase identity, an ACTIVE application
+account, and the TENANT application role. The backend derives the
+`saved_listings.tenant_id` through the authenticated user's tenant profile;
+request-supplied tenant or ownership identifiers are never authoritative.
+
+`GET /api/v1/tenant/saved-listings` accepts the standard `page` and `limit`
+parameters. An AVAILABLE entry embeds the same private-safe card serializer
+used by public search. If an older save's listing is no longer ACTIVE or its
+property is archived, the relationship is preserved and returned as:
+
+```json
+{
+  "listing_id": "uuid",
+  "saved_at": "timestamp",
+  "availability": "UNAVAILABLE",
+  "listing": null
+}
+```
+
+No listing, property, owner, address, image, or Storage-path fields are
+serialized for an UNAVAILABLE save. The status endpoint returns only
+`listing_id` and the current tenant's `saved` boolean.
 
 ---
 
@@ -978,40 +1121,68 @@ POST /api/v1/listings/:listingId/save
 
 Backend must:
 
-* ensure listing exists
-* ensure listing is visible
-* prevent duplicates
+* allow a new relationship only for an ACTIVE listing on a non-archived property
+* treat an existing relationship as success, even if that listing later became unavailable
+* rely on the `(tenant_id, listing_id)` composite primary key as the final concurrency guarantee
 
-Possible conflict:
+Success is idempotent:
 
-```text
-409 DUPLICATE_SAVED_LISTING
+```json
+{
+  "success": true,
+  "data": {
+    "listing_id": "uuid",
+    "saved": true
+  }
+}
 ```
 
-Alternatively make this endpoint idempotent and return `200` if already saved.
+An ineligible or unknown new target returns `404 LISTING_NOT_FOUND`, without
+revealing whether a private listing exists.
 
-Recommended:
+`DELETE /api/v1/listings/:listingId/save` is also idempotent and returns `204`
+whether or not the tenant currently has that relationship. It remains
+available after the listing becomes non-public and never deletes or mutates the
+listing or property.
 
-Use idempotent behavior.
+Direct browser reads or writes to `saved_listings` remain denied by RLS. These
+operations go through the Node API.
 
 ---
 
 # 39. Application Question Management
 
 ```text
-GET    /api/v1/listings/:listingId/application-questions
+GET    /api/v1/landlord/listings/:listingId/application-questions
 POST   /api/v1/listings/:listingId/application-questions
-PATCH  /api/v1/application-questions/:questionId
-DELETE /api/v1/application-questions/:questionId
+PATCH  /api/v1/listings/:listingId/application-questions/:questionId
+DELETE /api/v1/listings/:listingId/application-questions/:questionId
+
+GET    /api/v1/listings/:listingId/application-questions
 ```
 
-Management role:
+The first four management routes require a verified identity, ACTIVE account,
+LANDLORD role, and backend-confirmed ownership of the listing. Cross-landlord
+listing access returns `404 LISTING_NOT_FOUND`; a question ID is always scoped
+to the owned listing and cannot move between listings.
 
-LANDLORD.
+The landlord GET response includes metadata:
 
-Public/tenant read:
+```json
+{
+  "locked": false,
+  "editable": true,
+  "listing_status": "DRAFT"
+}
+```
 
-Allowed for active listing.
+Question mutations are allowed only for `DRAFT`, `PENDING_REVIEW`, `ACTIVE`,
+and `PAUSED` listings while no submitted application exists. `RENTED` and
+`CLOSED` return `409 LISTING_NOT_EDITABLE`.
+
+The final GET is anonymous and returns questions only when the listing is
+`ACTIVE` and its property is not archived. All other and unknown states return
+`404 LISTING_NOT_FOUND` without revealing question existence.
 
 ---
 
@@ -1037,20 +1208,38 @@ For SELECT:
   "is_required": true,
   "display_order": 2,
   "options": [
-    "6 months",
-    "12 months",
-    "18 months"
+    { "option_text": "6 months", "display_order": 0 },
+    { "option_text": "12 months", "display_order": 1 },
+    { "option_text": "18 months", "display_order": 2 }
   ]
 }
 ```
+
+Supported types are `TEXT`, `NUMBER`, `BOOLEAN`, `DATE`, and `SELECT`.
+SELECT requires at least one valid option. Non-SELECT questions cannot retain
+options. Changing SELECT to another type removes its options as one compensated
+operation; changing another type to SELECT requires replacement options.
+
+PATCH accepts only `question_text`, `question_type`, `is_required`,
+`display_order`, and context-valid `options`. Create and update reject protected
+or unknown fields. DELETE returns `204` and cascades only that question's
+options.
+
+Questions are ordered by `display_order`, `created_at`, then `id`. Options are
+ordered by `display_order`, then `id`. Both landlord and public serializers
+return only question presentation fields; non-SELECT questions consistently
+return `options: []`.
 
 ---
 
 # 41. Question Edit Restriction
 
-If the listing already has a SUBMITTED application:
+If any application for the listing has `submitted_at IS NOT NULL`, the entire
+question set becomes immutable. Application status text alone is not the lock
+authority. A DRAFT application with `submitted_at IS NULL` does not lock it.
 
-The backend must prevent destructive edits to existing questions.
+The backend blocks create, update, delete, type changes, option changes,
+required-state changes, and ordering changes.
 
 Return:
 
@@ -1061,8 +1250,12 @@ Return:
 with code:
 
 ```text
-APPLICATION_QUESTION_LOCKED
+APPLICATION_QUESTIONS_LOCKED
 ```
+
+Question/option persistence uses controlled compensation so a failed
+multi-table operation does not leave a SELECT question with partial or invalid
+options.
 
 ---
 
@@ -1070,15 +1263,17 @@ APPLICATION_QUESTION_LOCKED
 
 ```text
 POST   /api/v1/listings/:listingId/applications
-PATCH  /api/v1/applications/:applicationId
-POST   /api/v1/applications/:applicationId/submit
-POST   /api/v1/applications/:applicationId/withdraw
-
 GET    /api/v1/tenant/applications
 GET    /api/v1/applications/:applicationId
-GET    /api/v1/landlord/applications
-PATCH  /api/v1/applications/:applicationId/status
+PATCH  /api/v1/applications/:applicationId
+GET    /api/v1/applications/:applicationId/answers
+PUT    /api/v1/applications/:applicationId/answers
 ```
+
+TASK-010 implements tenant-owned DRAFT record operations, TASK-011 adds DRAFT
+answer operations, TASK-012 adds submission, and TASK-013 adds the tenant-owned
+list/detail read experience. Withdrawal, landlord reads, and later status
+progression remain future endpoints.
 
 ---
 
@@ -1105,16 +1300,45 @@ Request:
 
 Backend must:
 
-* ensure listing is ACTIVE
-* ensure user is TENANT
-* ensure no existing application exists for same tenant/listing
-* create status DRAFT
+* derive the tenant profile from the verified authenticated identity
+* require an ACTIVE tenant account
+* allow a new draft only for an ACTIVE listing on a non-archived property
+* create `status = DRAFT` with `submitted_at` and `withdrawn_at` null
+* rely on the database uniqueness constraint for one application per
+  tenant/listing
+* return the existing DRAFT without overwriting it when creation is repeated,
+  including when concurrent requests race
+* return `APPLICATION_ALREADY_EXISTS` if the existing record is not DRAFT
 
 Response:
 
 ```text
-201 Created
+201 Created for a new draft
+200 OK for an idempotently returned existing draft
 ```
+
+---
+
+## 43.1 Retrieve Tenant Application Detail
+
+```http
+GET /api/v1/applications/:applicationId
+```
+
+Only the owning ACTIVE tenant may retrieve the application. The response uses
+an explicit tenant serializer and never returns `tenant_id`, internal ownership
+identifiers, or status-history actor IDs. It includes the tenant's own core
+fields, safe answer values, submission timestamps, and an actor-free timeline
+containing only `from_status`, `to_status`, and `created_at`.
+
+When the associated listing is still `ACTIVE` on a non-archived property, the
+response includes `availability: "AVAILABLE"` and the same privacy-safe public
+listing card used by Search & Discovery, with private images represented only
+by short-lived signed presentation URLs. Otherwise it includes
+`availability: "UNAVAILABLE"` and `listing: null`; the application does not
+grant access to former listing fields, exact addresses, coordinates, ownership
+data, or Storage paths. A DRAFT is editable only while available. A submitted
+application and an unavailable DRAFT are read-only.
 
 ---
 
@@ -1141,15 +1365,28 @@ Editable fields:
 
 Do not allow tenant to update status directly.
 
+Editing also requires the listing to remain ACTIVE on a non-archived property.
+If it is no longer publicly eligible, the draft is preserved and retrieval
+continues, but PATCH returns `409 LISTING_NOT_AVAILABLE`. `id`, `listing_id`,
+`tenant_id`, `status`, submission/withdrawal timestamps, and audit timestamps
+are strict protected fields and cannot be mass-assigned.
+
 ---
 
-# 45. Submit Application Answers
+# 45. Draft Application Answers
 
-Recommended:
+Implemented endpoints:
 
 ```text
+GET /api/v1/applications/:applicationId/answers
 PUT /api/v1/applications/:applicationId/answers
 ```
+
+Both require a verified identity, ACTIVE account, TENANT role, and backend
+ownership of the application. Another tenant receives `404
+APPLICATION_NOT_FOUND`. GET remains available to the owning tenant if the
+listing later becomes unavailable and returns only `question_id`, `answer_text`,
+and `updated_at`; it does not return current private question structure.
 
 Request:
 
@@ -1158,25 +1395,50 @@ Request:
   "answers": [
     {
       "question_id": "uuid",
-      "answer": "true"
+      "answer_text": "true"
     },
     {
       "question_id": "uuid",
-      "answer": "12 months"
+      "answer_text": "12 months"
     }
   ]
 }
 ```
 
-Use PUT because this replaces/updates the application's current answer set while still DRAFT.
+PUT partially upserts the supplied questions while the application is DRAFT;
+omitted questions are unchanged. Duplicate `question_id` entries are rejected.
+`answer_text: null`, an empty string, or a whitespace-only string explicitly
+clears that question by deleting its answer row. An empty `answers` array is a
+valid no-op, so required questions may remain unanswered in a DRAFT.
 
 Backend validates:
 
 * tenant owns application
 * application is DRAFT
-* question belongs to listing
-* answer type is valid
-* required questions are complete at submission
+* listing remains ACTIVE on a non-archived property for mutation
+* every question belongs to the application's listing
+* TEXT is trimmed and limited to 2,000 characters
+* NUMBER is finite and stored in canonical numeric text form
+* BOOLEAN is exactly the canonical `true` or `false`
+* DATE is a valid `YYYY-MM-DD` value
+* SELECT exactly matches current `option_text` for that exact question
+
+SELECT answer text is retained because the existing schema has no option-ID
+column. The backend validates it against `application_question_options` before
+every write; an option from another question or invented text fails validation.
+The unique `(application_id, question_id)` constraint is the final concurrency
+guarantee.
+
+Required-answer completeness is not enforced while DRAFT and remains part of
+future application submission.
+
+Landlord question mutations coordinate stale DRAFT answer cleanup. A question
+type change removes affected DRAFT answers. Replacing SELECT options removes
+answers whose text is no longer in the current set, while option reorder/addition
+preserves values that remain valid. Question deletion first removes dependent
+DRAFT answers. Question wording, display order, and required-state-only changes
+preserve valid answers. The existing submitted-application question lock runs
+before all of these mutations, so submitted answers remain protected.
 
 ---
 
@@ -1188,21 +1450,42 @@ POST /api/v1/applications/:applicationId/submit
 
 Role:
 
-TENANT.
+Authenticated, ACTIVE `TENANT`; the application must belong to the tenant
+profile resolved from the verified access token.
 
-Backend must:
+The request has no body. Client-supplied ownership, status, and timestamp
+fields are ignored. At the transaction boundary the backend requires:
 
-1. confirm tenant owns application
-2. confirm status is DRAFT
-3. confirm listing still ACTIVE
-4. validate required application fields
-5. validate required custom answers
-6. set status SUBMITTED
-7. populate submitted_at
-8. insert application status history
-9. create landlord notification
+* an `ACTIVE` listing on a non-archived property
+* `move_in_date`, `requested_lease_duration_months`, and
+  `number_of_occupants`
+* an answer for every current required question
+* every stored answer still valid for its current question type and SELECT
+  option set
 
-Use transaction where appropriate.
+Success returns the explicit application serializer with `status:
+"SUBMITTED"` and the server-generated `submitted_at`. The same transaction
+creates exactly one `DRAFT` to `SUBMITTED` status-history record whose actor is
+the authenticated application user. It never changes `withdrawn_at`.
+
+The operation is idempotent. Retrying an already completed submission returns
+the same submitted state with `meta.submitted_now: false`; concurrent requests
+cannot create another transition or history row. A later application state
+returns `409 APPLICATION_NOT_SUBMITTABLE`.
+
+Readiness errors return `422 APPLICATION_INCOMPLETE` with safe field arrays:
+
+```json
+{
+  "missing_fields": ["move_in_date"],
+  "missing_question_ids": ["uuid"],
+  "invalid_question_ids": ["uuid"]
+}
+```
+
+An unavailable listing returns `409 LISTING_NOT_AVAILABLE`. Another tenant's
+UUID returns `404 APPLICATION_NOT_FOUND`. Submission does not create a
+notification or transition to `UNDER_REVIEW` in TASK-012.
 
 ---
 
@@ -1222,20 +1505,26 @@ Allowed from:
 SUBMITTED
 UNDER_REVIEW
 SHORTLISTED
-VIEWING_INVITED
 ```
 
-Product decision may allow withdrawal after viewing.
+TASK-015 intentionally does not implement withdrawal from DRAFT, viewing,
+accepted, rejected, or already terminal states. Repeating a completed
+withdrawal is idempotent and does not create another history row.
 
-Do not allow withdrawal after:
+The endpoint derives the tenant, target status, and history actor from the
+verified authenticated profile. It accepts no client-selected status or actor.
+The status update, `withdrawn_at` assignment, and one status-history insert are
+atomic. A conflicting transition returns:
 
-```text
-ACCEPTED
-REJECTED
-WITHDRAWN
+```json
+{
+  "success": false,
+  "error": {
+    "code": "INVALID_APPLICATION_TRANSITION",
+    "message": "This application action is not allowed from its current status."
+  }
+}
 ```
-
-unless future business rules change.
 
 ---
 
@@ -1255,80 +1544,156 @@ limit
 
 Tenant only sees own applications.
 
+Authentication:
+
+Verified identity, ACTIVE account, and `TENANT` role are required. Tenant
+ownership is derived from the authenticated application user and cannot be
+selected through query parameters.
+
+Pagination defaults to `page=1` and `limit=20`; `limit` is bounded to 100.
+Results are ordered by `updated_at DESC, id DESC`. The optional `status` filter
+accepts only the approved application states.
+
+Each item contains the tenant-safe application summary plus:
+
+```json
+{
+  "availability": "AVAILABLE",
+  "listing": {
+    "id": "uuid",
+    "title": "Safe public title",
+    "cover_image_url": "short-lived-signed-url"
+  }
+}
+```
+
+The `listing` object is the full approved public card serializer, not a private
+database row. When the listing is not public, the item instead returns
+`availability: "UNAVAILABLE"` and `listing: null`. This preserves the
+application relationship without making it a backdoor to private listing,
+property, landlord, address, coordinate, or Storage data.
+
 ---
 
 # 49. Landlord Applications
 
 ```http
-GET /api/v1/landlord/applications
+GET /api/v1/landlord/listings/:listingId/applications
 ```
 
-Role:
+Authentication:
 
-LANDLORD.
+Verified identity, ACTIVE account, LANDLORD role, and backend-confirmed
+ownership of the listing through its property are required. A listing owned by
+another landlord returns `404 LISTING_NOT_FOUND` without disclosing applicant
+volume.
 
 Optional filters:
 
 ```text
-listing_id
 status
 page
 limit
 ```
 
-Backend must return only applications for listings owned by authenticated landlord.
+Pagination defaults to `page=1` and `limit=20`; the maximum limit is 100.
+Ordering is `submitted_at DESC, id DESC`. The only accepted statuses are:
 
----
-
-# 50. Get Application Details
-
-```http
-GET /api/v1/applications/:applicationId
+```text
+SUBMITTED
+UNDER_REVIEW
+SHORTLISTED
+VIEWING_INVITED
+VIEWING_COMPLETED
+ACCEPTED
+REJECTED
+WITHDRAWN
 ```
 
-Allowed:
+`DRAFT` is never landlord-visible and is rejected as a filter. Each list item
+contains only the submitted application summary and:
 
-* tenant who owns application
-* landlord who owns listing
-* authorized admin when necessary
+```json
+{
+  "tenant": {
+    "first_name": "Jane",
+    "last_name": "Applicant",
+    "profile_photo_url": null
+  }
+}
+```
 
-Response should differ by role where privacy requires.
+The serializer does not expose tenant/profile IDs, Supabase identity, email,
+phone, account status, preferred locations, income range, employer or school,
+occupation, bio, or internal Storage fields.
 
 ---
 
-# 51. Update Application Status
+# 50. Landlord Application Detail
 
 ```http
-PATCH /api/v1/applications/:applicationId/status
+GET /api/v1/landlord/applications/:applicationId
+```
+
+Only the ACTIVE landlord who owns the application's listing may access this
+read-only endpoint. A guessed `DRAFT` ID and an application belonging to
+another landlord both return `404 APPLICATION_NOT_FOUND`.
+
+The response contains approved submitted application fields, the minimal name
+and profile-photo tenant identity, a safe listing/property summary, submitted
+answers with question text/type, and a timeline containing only
+`from_status`, `to_status`, and `created_at`. It never returns answer IDs,
+tenant/landlord ownership IDs, contact/private tenant-profile fields,
+`changed_by_user_id`, exact addresses, coordinates, or Storage paths.
+
+Historical submitted applications remain visible to their owning landlord when
+the listing becomes PAUSED, CLOSED, RENTED, archived, or otherwise non-public.
+TASK-015 adds only the dedicated review, shortlist, and reject actions below.
+Acceptance, viewing, messaging, and notification actions remain future
+workflow operations.
+
+---
+
+# 51. Explicit Landlord Application Actions
+
+```http
+POST /api/v1/landlord/applications/:applicationId/review
+POST /api/v1/landlord/applications/:applicationId/shortlist
+POST /api/v1/landlord/applications/:applicationId/reject
 ```
 
 Role:
 
-LANDLORD.
+LANDLORD with an ACTIVE account and backend-confirmed ownership of the
+application's listing. A DRAFT application ID and an application owned by
+another landlord both return `404 APPLICATION_NOT_FOUND`.
 
-Request:
+Each endpoint fixes its own target status; request-body status, actor, tenant,
+landlord, listing, and ownership fields have no authority. There is no generic
+application-status PATCH endpoint.
+
+Success uses:
 
 ```json
 {
-  "status": "SHORTLISTED"
+  "success": true,
+  "data": { "status": "UNDER_REVIEW" },
+  "meta": { "transitioned_now": true }
 }
 ```
 
-Backend must:
-
-* verify listing ownership
-* validate transition
-* update application
-* create status history
-* create tenant notification
-
-Do not allow arbitrary transitions.
+An identical retry returns the same status with `transitioned_now: false` and
+does not add history. Invalid, stale, contradictory, and terminal transitions
+return `409 INVALID_APPLICATION_TRANSITION`.
 
 ---
 
 # 52. Allowed Application Transitions
 
-Recommended V1 matrix:
+Roadmap matrix. Through TASK-015, the only implemented edges are DRAFT to
+SUBMITTED plus the SUBMITTED, UNDER_REVIEW, and SHORTLISTED edges that target
+UNDER_REVIEW, SHORTLISTED, REJECTED, or WITHDRAWN. Viewing and acceptance
+edges shown below remain future work:
 
 ```text
 DRAFT
@@ -1362,9 +1727,14 @@ VIEWING_COMPLETED
 
 `WITHDRAWN` is tenant-controlled.
 
-`REJECTED` and most progress states are landlord-controlled.
+`UNDER_REVIEW`, `SHORTLISTED`, and `REJECTED` are landlord-controlled. The
+database transaction locks the application row and compares the status seen by
+the service with the locked current status. Competing different targets cannot
+both commit from the same observed state; the winning update and its exactly
+one actor-attributed history row commit together.
 
-`ACCEPTED` requires special service handling.
+`ACCEPTED` and viewing states require future dedicated service handling and are
+not implemented by TASK-015.
 
 ---
 
@@ -1427,8 +1797,8 @@ But do not introduce it until the product explicitly supports it.
 # 55. Viewing Endpoints
 
 ```text
-POST   /api/v1/applications/:applicationId/viewings
-GET    /api/v1/viewings
+POST   /api/v1/landlord/applications/:applicationId/viewings
+GET    /api/v1/applications/:applicationId/viewings
 GET    /api/v1/viewings/:viewingId
 POST   /api/v1/viewings/:viewingId/confirm
 POST   /api/v1/viewings/:viewingId/decline
@@ -1442,7 +1812,7 @@ POST   /api/v1/viewings/:viewingId/no-show
 # 56. Create Viewing
 
 ```http
-POST /api/v1/applications/:applicationId/viewings
+POST /api/v1/landlord/applications/:applicationId/viewings
 ```
 
 Role:
@@ -1462,11 +1832,16 @@ Request:
 Backend must:
 
 * verify landlord owns listing
-* ensure application is in suitable state
+* require a SHORTLISTED or VIEWING_INVITED application
+* require no existing PROPOSED or CONFIRMED viewing
+* validate a future start, ordered end time, and bounded notes
 * create PROPOSED viewing
-* update application to VIEWING_INVITED when appropriate
-* create status history
-* notify tenant
+* atomically update SHORTLISTED to VIEWING_INVITED with one actor-attributed
+  status-history row
+
+The application may already be VIEWING_INVITED only when an earlier viewing is
+terminal. There is no notification side effect in TASK-016. The application
+transition and initial viewing insert occur in one backend-only transaction.
 
 ---
 
@@ -1525,6 +1900,9 @@ Allowed participant:
 
 Backend records who cancelled if required for auditability.
 
+TASK-016 permits either participant to cancel a PROPOSED or CONFIRMED viewing.
+Cancellation leaves the application at VIEWING_INVITED.
+
 ---
 
 # 60. Complete Viewing
@@ -1564,6 +1942,16 @@ LANDLORD.
 Allowed for scheduled confirmed viewing after relevant time.
 
 Do not automatically reject application.
+
+---
+
+TASK-016 additionally requires completion and no-show only after the viewing
+start time. Completion atomically updates the viewing, changes the application
+from VIEWING_INVITED to VIEWING_COMPLETED, and creates exactly one
+actor-attributed application-history row. No-show leaves the application at
+VIEWING_INVITED. All actions are explicit POST endpoints; there is no generic
+viewing-status PATCH. Identical retries are idempotent and conflicting actions
+from the same observed source state allow at most one winner.
 
 ---
 
@@ -2183,6 +2571,7 @@ POST   /api/v1/tenant/preferred-locations
 DELETE /api/v1/tenant/preferred-locations/:id
 
 GET /api/v1/tenant/saved-listings
+GET /api/v1/tenant/saved-listings/:listingId/status
 GET /api/v1/tenant/applications
 ```
 
@@ -2228,10 +2617,11 @@ DELETE /api/v1/listings/:listingId/save
 ## Questions
 
 ```text
-GET    /api/v1/listings/:listingId/application-questions
+GET    /api/v1/landlord/listings/:listingId/application-questions
 POST   /api/v1/listings/:listingId/application-questions
-PATCH  /api/v1/application-questions/:questionId
-DELETE /api/v1/application-questions/:questionId
+PATCH  /api/v1/listings/:listingId/application-questions/:questionId
+DELETE /api/v1/listings/:listingId/application-questions/:questionId
+GET    /api/v1/listings/:listingId/application-questions
 ```
 
 ## Applications
@@ -2240,13 +2630,19 @@ DELETE /api/v1/application-questions/:questionId
 POST  /api/v1/listings/:listingId/applications
 PATCH /api/v1/applications/:applicationId
 
+GET /api/v1/tenant/applications
+GET /api/v1/applications/:applicationId
+
+GET /api/v1/landlord/listings/:listingId/applications
+GET /api/v1/landlord/applications/:applicationId
+
 PUT  /api/v1/applications/:applicationId/answers
 POST /api/v1/applications/:applicationId/submit
 POST /api/v1/applications/:applicationId/withdraw
-POST /api/v1/applications/:applicationId/accept
 
-GET   /api/v1/applications/:applicationId
-PATCH /api/v1/applications/:applicationId/status
+POST /api/v1/landlord/applications/:applicationId/review
+POST /api/v1/landlord/applications/:applicationId/shortlist
+POST /api/v1/landlord/applications/:applicationId/reject
 ```
 
 ## Viewings

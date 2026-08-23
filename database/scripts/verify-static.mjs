@@ -218,6 +218,51 @@ requireSql(
 );
 requireSql(
   migrationSql,
+  "where from_status = 'DRAFT' and to_status = 'SUBMITTED'",
+  'one submission history transition per application',
+);
+requireSql(
+  migrationSql,
+  'pg_advisory_xact_lock(hashtextextended(p_listing_id::text, 0))',
+  'shared transaction lock for application submission and question mutation',
+);
+requireSql(
+  migrationSql,
+  'revoke all on function public.submit_application_transaction(uuid, uuid, uuid) from public, anon, authenticated',
+  'submission function is unavailable to browser roles',
+);
+requireSql(
+  migrationSql,
+  'select applications.* into v_application from public.applications where applications.id = p_application_id for update',
+  'application transitions lock the current application row',
+);
+requireSql(
+  migrationSql,
+  'if v_application.status <> p_expected_status then',
+  'application transitions reject a stale competing target',
+);
+requireSql(
+  migrationSql,
+  'revoke all on function public.transition_application_status_transaction( uuid, uuid, text, text, text ) from public, anon, authenticated',
+  'state transition function is unavailable to browser roles',
+);
+requireSql(
+  migrationSql,
+  "where status in ('proposed', 'confirmed')",
+  'one open viewing per application',
+);
+requireSql(
+  migrationSql,
+  'revoke all on function public.propose_viewing_transaction( uuid, uuid, text, timestamptz, timestamptz, text ) from public, anon, authenticated',
+  'viewing proposal function is unavailable to browser roles',
+);
+requireSql(
+  migrationSql,
+  'revoke all on function public.transition_viewing_transaction( uuid, uuid, text, text, text ) from public, anon, authenticated',
+  'viewing transition function is unavailable to browser roles',
+);
+requireSql(
+  migrationSql,
   'check (end_time is null or end_time > start_time)',
   'viewing time ordering',
 );
@@ -262,7 +307,9 @@ const requiredIndexes = [
   'saved_listings_listing_id_idx',
   'application_questions_listing_id_idx',
   'application_status_history_application_id_idx',
+  'application_status_history_one_submission_idx',
   'viewings_application_id_idx',
+  'viewings_one_open_per_application_idx',
   'conversation_participants_user_id_idx',
   'reports_listing_id_idx',
 ];
@@ -282,7 +329,7 @@ assert.doesNotMatch(
 );
 assert.doesNotMatch(
   migrationSql,
-  /supabase_secret_key|service_role|database_url/i,
+  /supabase_secret_key|database_url|postgres(?:ql)?:\/\//i,
   'Migrations must not contain privileged credentials or connection values.',
 );
 assert.doesNotMatch(

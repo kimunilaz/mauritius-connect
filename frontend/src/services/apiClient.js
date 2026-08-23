@@ -15,7 +15,7 @@ export class ApiError extends Error {
 
 export async function apiRequest(
   path,
-  { method = 'GET', accessToken, body, signal } = {},
+  { method = 'GET', accessToken, body, signal, returnEnvelope = false } = {},
 ) {
   const headers = { Accept: 'application/json' };
 
@@ -23,14 +23,18 @@ export async function apiRequest(
     headers.Authorization = `Bearer ${accessToken}`;
   }
 
-  if (body !== undefined) {
+  const multipart =
+    typeof globalThis.FormData !== 'undefined' &&
+    body instanceof globalThis.FormData;
+
+  if (body !== undefined && !multipart) {
     headers['Content-Type'] = 'application/json';
   }
 
   const response = await fetch(`${apiBaseUrl}${path}`, {
     method,
     headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: body === undefined || multipart ? body : JSON.stringify(body),
     signal,
   });
 
@@ -59,5 +63,5 @@ export async function apiRequest(
     });
   }
 
-  return payload.data;
+  return returnEnvelope ? payload : payload.data;
 }

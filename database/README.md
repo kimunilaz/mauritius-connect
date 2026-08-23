@@ -14,6 +14,9 @@ Apply every `*.sql` file in lexical order:
 3. `202608190003_create_application_viewing_tables.sql`
 4. `202608190004_create_communication_moderation_tables.sql`
 5. `202608190005_add_indexes_triggers_and_rls.sql`
+6. `202608220001_add_application_submission_transactions.sql`
+7. `202608220002_add_application_state_transition_transaction.sql`
+8. `202608220003_add_viewing_transactions.sql`
 
 The first migration expects Supabase's `auth.users` table to exist. It links
 `profiles.id` to `auth.users.id` with `ON DELETE RESTRICT`, preserving rental
@@ -25,6 +28,26 @@ conversation that has history.
 
 Once a migration has been applied to a shared environment, do not edit it. Put
 every later schema change in a new, ordered migration.
+
+`202608220001_add_application_submission_transactions.sql` adds the TASK-012
+integrity boundary: an idempotent application-submission transaction, an
+atomic landlord question-mutation transaction sharing its per-listing lock, a
+post-DRAFT answer-mutation trigger, and a unique partial submission-history
+index. Its RPC entry points are executable only by the backend role; anonymous
+and authenticated browser roles are explicitly revoked.
+
+`202608220002_add_application_state_transition_transaction.sql` adds the
+TASK-015 application state transaction. It row-locks the application, rechecks
+the actor's profile role and ownership at commit time, rejects stale competing
+targets, atomically writes one approved state change and its history row, and
+keeps identical retries idempotent. The function is backend-only; browser roles
+are explicitly revoked and RLS remains deny-by-default.
+
+`202608220003_add_viewing_transactions.sql` adds the TASK-016 one-open-viewing
+partial unique index and the backend-only proposal/transition functions. They
+row-lock the workflow records, recheck ACTIVE actor ownership, make identical
+actions idempotent, and atomically couple the two viewing-related application
+state/history changes. Browser roles cannot execute either function.
 
 ## Applying migrations
 
@@ -94,6 +117,22 @@ Row Level Security is enabled on all public application tables. TASK-001 creates
 no policies, intentionally leaving publishable-key browser access deny-by-default.
 The database owner and backend Supabase secret-key client retain their expected
 privileged behavior. Identity-aware policies belong to TASK-002 and later work.
+
+## Private property image storage
+
+Property images use the private `property-images` Supabase Storage bucket. The
+local bucket declaration lives in `supabase/config.toml`; configure the hosted
+development bucket idempotently from ignored backend environment settings with:
+
+```bash
+npm run storage:setup:hosted
+```
+
+The bucket accepts only JPEG, PNG, and WebP objects up to 10 MiB. It has no
+publishable-key upload, update, read, or delete policies. The trusted Node API
+performs authentication, active-account, LANDLORD-role, and property-ownership
+checks before using its backend-only privileged client. Application code stores
+generated object paths in `property_images`; it never persists signed URLs.
 
 ## Schema representation
 

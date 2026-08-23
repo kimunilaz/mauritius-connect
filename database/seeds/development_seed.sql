@@ -327,8 +327,8 @@ begin
       10,
       1,
       'Development submitted application.',
-      'SUBMITTED',
-      now()
+      'DRAFT',
+      null
     ),
     (
       '50000000-0000-0000-0000-000000000003',
@@ -367,6 +367,12 @@ begin
     application_id = excluded.application_id,
     question_id = excluded.question_id,
     answer_text = excluded.answer_text;
+
+  update public.applications
+  set
+    status = 'SUBMITTED',
+    submitted_at = now()
+  where id = '50000000-0000-0000-0000-000000000002';
 
   insert into public.application_status_history (
     id,

@@ -50,6 +50,9 @@ async function expectConstraintFailure(name, sql, constraintName) {
 
 try {
   await db.exec(`
+    create role anon;
+    create role authenticated;
+    create role service_role;
     create schema auth;
     create table auth.users (
       id uuid primary key,
@@ -382,6 +385,333 @@ try {
       where id = '00000000-0000-0000-0000-000000000001'
     `);
     assert.equal(result.rows[0].updated, true);
+  });
+
+  await db.exec(`
+    insert into public.application_questions (
+      id, listing_id, question_text, question_type, is_required
+    ) values (
+      '06000000-0000-0000-0000-000000000001',
+      '04000000-0000-0000-0000-000000000001',
+      'Why is this home suitable?',
+      'TEXT',
+      true
+    );
+
+    insert into public.applications (
+      id,
+      listing_id,
+      tenant_id,
+      move_in_date,
+      requested_lease_duration_months,
+      number_of_occupants
+    ) values (
+      '05000000-0000-0000-0000-000000000002',
+      '04000000-0000-0000-0000-000000000001',
+      '01000000-0000-0000-0000-000000000002',
+      current_date + 30,
+      12,
+      2
+    ), (
+      '05000000-0000-0000-0000-000000000003',
+      '04000000-0000-0000-0000-000000000001',
+      '01000000-0000-0000-0000-000000000003',
+      current_date + 45,
+      12,
+      1
+    );
+
+    insert into public.application_answers (
+      application_id, question_id, answer_text
+    ) values (
+      '05000000-0000-0000-0000-000000000002',
+      '06000000-0000-0000-0000-000000000001',
+      'It is suitable for my household.'
+    );
+  `);
+
+  await test('submits once and records exactly one attributed transition', async () => {
+    const first = await db.query(`
+      select * from public.submit_application_transaction(
+        '05000000-0000-0000-0000-000000000002',
+        '01000000-0000-0000-0000-000000000002',
+        '00000000-0000-0000-0000-000000000002'
+      )
+    `);
+    const repeated = await db.query(`
+      select * from public.submit_application_transaction(
+        '05000000-0000-0000-0000-000000000002',
+        '01000000-0000-0000-0000-000000000002',
+        '00000000-0000-0000-0000-000000000002'
+      )
+    `);
+    assert.equal(first.rows[0].outcome, 'SUBMITTED');
+    assert.equal(repeated.rows[0].outcome, 'ALREADY_SUBMITTED');
+    const state = await db.query(`
+      select
+        applications.status,
+        applications.submitted_at is not null as has_submitted_at,
+        count(application_status_history.id)::integer as history_count,
+        min(application_status_history.changed_by_user_id::text) as actor
+      from public.applications
+      left join public.application_status_history
+        on application_status_history.application_id = applications.id
+       and application_status_history.from_status = 'DRAFT'
+       and application_status_history.to_status = 'SUBMITTED'
+      where applications.id = '05000000-0000-0000-0000-000000000002'
+      group by applications.id
+    `);
+    assert.deepEqual(state.rows[0], {
+      status: 'SUBMITTED',
+      has_submitted_at: true,
+      history_count: 1,
+      actor: '00000000-0000-0000-0000-000000000002',
+    });
+  });
+
+  await test('serializes landlord state transitions with idempotent history', async () => {
+    const reviewed = await db.query(`
+      select * from public.transition_application_status_transaction(
+        '05000000-0000-0000-0000-000000000002',
+        '00000000-0000-0000-0000-000000000004',
+        'LANDLORD',
+        'SUBMITTED',
+        'UNDER_REVIEW'
+      )
+    `);
+    const repeated = await db.query(`
+      select * from public.transition_application_status_transaction(
+        '05000000-0000-0000-0000-000000000002',
+        '00000000-0000-0000-0000-000000000004',
+        'LANDLORD',
+        'UNDER_REVIEW',
+        'UNDER_REVIEW'
+      )
+    `);
+    const staleReject = await db.query(`
+      select * from public.transition_application_status_transaction(
+        '05000000-0000-0000-0000-000000000002',
+        '00000000-0000-0000-0000-000000000004',
+        'LANDLORD',
+        'SUBMITTED',
+        'REJECTED'
+      )
+    `);
+    assert.equal(reviewed.rows[0].outcome, 'TRANSITIONED');
+    assert.equal(repeated.rows[0].outcome, 'ALREADY_TARGET');
+    assert.equal(staleReject.rows[0].outcome, 'INVALID_TRANSITION');
+    const state = await db.query(`
+      select applications.status, count(history.id)::integer as history_count
+      from public.applications
+      left join public.application_status_history history
+        on history.application_id = applications.id
+       and history.from_status = 'SUBMITTED'
+       and history.to_status = 'UNDER_REVIEW'
+      where applications.id = '05000000-0000-0000-0000-000000000002'
+      group by applications.id
+    `);
+    assert.deepEqual(state.rows[0], {
+      status: 'UNDER_REVIEW',
+      history_count: 1,
+    });
+  });
+
+  await test('supports shortlist and rejection only through approved edges', async () => {
+    const shortlisted = await db.query(`
+      select * from public.transition_application_status_transaction(
+        '05000000-0000-0000-0000-000000000002',
+        '00000000-0000-0000-0000-000000000004',
+        'LANDLORD',
+        'UNDER_REVIEW',
+        'SHORTLISTED'
+      )
+    `);
+    const rejected = await db.query(`
+      select * from public.transition_application_status_transaction(
+        '05000000-0000-0000-0000-000000000002',
+        '00000000-0000-0000-0000-000000000004',
+        'LANDLORD',
+        'SHORTLISTED',
+        'REJECTED'
+      )
+    `);
+    const terminal = await db.query(`
+      select * from public.transition_application_status_transaction(
+        '05000000-0000-0000-0000-000000000002',
+        '00000000-0000-0000-0000-000000000002',
+        'TENANT',
+        'REJECTED',
+        'WITHDRAWN'
+      )
+    `);
+    assert.equal(shortlisted.rows[0].outcome, 'TRANSITIONED');
+    assert.equal(rejected.rows[0].outcome, 'TRANSITIONED');
+    assert.equal(terminal.rows[0].outcome, 'INVALID_TRANSITION');
+  });
+
+  await test('keeps DRAFT transitions invisible to landlord actors', async () => {
+    const result = await db.query(`
+      select * from public.transition_application_status_transaction(
+        '05000000-0000-0000-0000-000000000003',
+        '00000000-0000-0000-0000-000000000004',
+        'LANDLORD',
+        'DRAFT',
+        'UNDER_REVIEW'
+      )
+    `);
+    assert.equal(result.rows[0].outcome, 'NOT_FOUND');
+  });
+
+  await db.exec(`
+    insert into public.listings (
+      id, property_id, title, description, monthly_rent, available_from, status
+    ) values (
+      '04000000-0000-0000-0000-000000000002',
+      '03000000-0000-0000-0000-000000000001',
+      'Viewing fixture', 'Historical viewing fixture.', 24000, current_date, 'CLOSED'
+    );
+    insert into public.applications (
+      id, listing_id, tenant_id, status, submitted_at
+    ) values (
+      '05000000-0000-0000-0000-000000000004',
+      '04000000-0000-0000-0000-000000000002',
+      '01000000-0000-0000-0000-000000000001', 'SHORTLISTED', now()
+    );
+  `);
+
+  await test('proposes and completes a viewing with atomic application history', async () => {
+    const proposed = await db.query(`
+      select * from public.propose_viewing_transaction(
+        '05000000-0000-0000-0000-000000000004',
+        '00000000-0000-0000-0000-000000000004',
+        'SHORTLISTED', now() + interval '2 days', null, 'Fixture'
+      )
+    `);
+    const duplicate = await db.query(`
+      select * from public.propose_viewing_transaction(
+        '05000000-0000-0000-0000-000000000004',
+        '00000000-0000-0000-0000-000000000004',
+        'VIEWING_INVITED', now() + interval '3 days', null, null
+      )
+    `);
+    assert.equal(proposed.rows[0].outcome, 'CREATED');
+    assert.equal(duplicate.rows[0].outcome, 'OPEN_VIEWING_EXISTS');
+    const id = proposed.rows[0].viewing_id;
+    await db.query(`select * from public.transition_viewing_transaction(
+      '${id}', '00000000-0000-0000-0000-000000000001',
+      'TENANT', 'PROPOSED', 'CONFIRM'
+    )`);
+    await db.exec(
+      `update public.viewings set start_time = now() - interval '1 hour' where id = '${id}'`,
+    );
+    const completed =
+      await db.query(`select * from public.transition_viewing_transaction(
+      '${id}', '00000000-0000-0000-0000-000000000004',
+      'LANDLORD', 'CONFIRMED', 'COMPLETE'
+    )`);
+    const repeated =
+      await db.query(`select * from public.transition_viewing_transaction(
+      '${id}', '00000000-0000-0000-0000-000000000004',
+      'LANDLORD', 'COMPLETED', 'COMPLETE'
+    )`);
+    assert.equal(completed.rows[0].outcome, 'TRANSITIONED');
+    assert.equal(repeated.rows[0].outcome, 'ALREADY_TARGET');
+    const state = await db.query(`
+      select applications.status,
+        count(history.id) filter (where history.to_status = 'VIEWING_INVITED')::integer as invited,
+        count(history.id) filter (where history.to_status = 'VIEWING_COMPLETED')::integer as completed
+      from public.applications
+      left join public.application_status_history history
+        on history.application_id = applications.id
+      where applications.id = '05000000-0000-0000-0000-000000000004'
+      group by applications.id
+    `);
+    assert.deepEqual(state.rows[0], {
+      status: 'VIEWING_COMPLETED',
+      invited: 1,
+      completed: 1,
+    });
+  });
+
+  await test('partial unique index rejects a second open viewing', async () => {
+    await db.exec(
+      `update public.applications set status = 'VIEWING_INVITED' where id = '05000000-0000-0000-0000-000000000004'`,
+    );
+    await db.exec(`insert into public.viewings (
+      application_id, proposed_by_user_id, start_time, status
+    ) values (
+      '05000000-0000-0000-0000-000000000004',
+      '00000000-0000-0000-0000-000000000004', now() + interval '2 days', 'PROPOSED'
+    )`);
+    await assert.rejects(
+      db.exec(`insert into public.viewings (
+      application_id, proposed_by_user_id, start_time, status
+    ) values (
+      '05000000-0000-0000-0000-000000000004',
+      '00000000-0000-0000-0000-000000000004', now() + interval '3 days', 'CONFIRMED'
+    )`),
+      /viewings_one_open_per_application_idx/i,
+    );
+  });
+
+  await test('leaves an incomplete application draft with no history', async () => {
+    const result = await db.query(`
+      select * from public.submit_application_transaction(
+        '05000000-0000-0000-0000-000000000003',
+        '01000000-0000-0000-0000-000000000003',
+        '00000000-0000-0000-0000-000000000003'
+      )
+    `);
+    assert.equal(result.rows[0].outcome, 'INCOMPLETE');
+    assert.deepEqual(result.rows[0].missing_question_ids, [
+      '06000000-0000-0000-0000-000000000001',
+    ]);
+    const state = await db.query(`
+      select
+        applications.status,
+        applications.submitted_at,
+        count(application_status_history.id)::integer as history_count
+      from public.applications
+      left join public.application_status_history
+        on application_status_history.application_id = applications.id
+      where applications.id = '05000000-0000-0000-0000-000000000003'
+      group by applications.id
+    `);
+    assert.deepEqual(state.rows[0], {
+      status: 'DRAFT',
+      submitted_at: null,
+      history_count: 0,
+    });
+  });
+
+  await test('blocks answer mutation after submission', async () => {
+    await assert.rejects(
+      db.exec(`
+        update public.application_answers
+        set answer_text = 'Too late'
+        where application_id = '05000000-0000-0000-0000-000000000002'
+      `),
+      /APPLICATION_NOT_EDITABLE/i,
+    );
+  });
+
+  await test('question mutation rechecks the submitted lock transactionally', async () => {
+    const result = await db.query(`
+      select * from public.mutate_application_question_transaction(
+        'UPDATE',
+        '04000000-0000-0000-0000-000000000001',
+        '06000000-0000-0000-0000-000000000001',
+        '00000000-0000-0000-0000-000000000004',
+        '{"question_text":"Must not change"}'::jsonb
+      )
+    `);
+    assert.equal(result.rows[0].outcome, 'LOCKED');
+    const question = await db.query(`
+      select question_text
+      from public.application_questions
+      where id = '06000000-0000-0000-0000-000000000001'
+    `);
+    assert.equal(question.rows[0].question_text, 'Why is this home suitable?');
   });
 
   await db.exec(`

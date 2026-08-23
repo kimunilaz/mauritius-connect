@@ -23,7 +23,11 @@ export function validateRequest(schema, source = 'body') {
       return;
     }
 
-    request[source] = result.data;
+    if (source === 'query') {
+      request.validatedQuery = result.data;
+    } else {
+      request[source] = result.data;
+    }
     next();
   };
 }

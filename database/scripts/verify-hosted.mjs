@@ -40,6 +40,7 @@ const requiredIndexes = [
   'application_question_options_question_id_idx',
   'application_questions_listing_id_idx',
   'application_status_history_application_id_idx',
+  'application_status_history_one_submission_idx',
   'applications_listing_id_idx',
   'applications_listing_id_status_idx',
   'applications_listing_tenant_key',
@@ -73,9 +74,11 @@ const requiredIndexes = [
   'verification_records_reviewed_by_user_id_idx',
   'verification_records_subject_idx',
   'viewings_application_id_idx',
+  'viewings_one_open_per_application_idx',
 ];
 
 const expectedTriggers = [
+  'application_answers_require_draft',
   'application_answers_set_updated_at',
   'application_questions_set_updated_at',
   'applications_set_updated_at',
@@ -99,8 +102,10 @@ const client = new Client({
 });
 
 const passed = [];
+let activeCheck = 'database connection';
 
 async function check(name, callback) {
+  activeCheck = name;
   await callback();
   passed.push(name);
 }
@@ -109,12 +114,21 @@ try {
   await client.connect();
 
   await check(
-    'migration history contains every TASK-001 migration',
+    'migration history contains the foundation and transaction migrations',
     async () => {
       const { rows } = await client.query(`
       select version
       from supabase_migrations.schema_migrations
-      where version between '202608190001' and '202608190005'
+      where version = any(array[
+        '202608190001',
+        '202608190002',
+        '202608190003',
+        '202608190004',
+        '202608190005',
+        '202608220001',
+        '202608220002',
+        '202608220003'
+      ])
       order by version
     `);
       assert.deepEqual(
@@ -125,6 +139,9 @@ try {
           '202608190003',
           '202608190004',
           '202608190005',
+          '202608220001',
+          '202608220002',
+          '202608220003',
         ],
       );
     },
@@ -263,13 +280,14 @@ try {
         [
           [
             'applications_one_accepted_per_listing_idx',
+            'application_status_history_one_submission_idx',
             'listings_one_live_per_property_idx',
             'notifications_user_id_unread_idx',
             'property_images_one_cover_per_property_idx',
           ],
         ],
       );
-      assert.equal(rows.length, 4);
+      assert.equal(rows.length, 5);
       assert.ok(
         rows.every(
           ({ indexdef, predicate }) =>
@@ -296,6 +314,13 @@ try {
             indexname === 'applications_one_accepted_per_listing_idx',
         ).predicate,
         /accepted/i,
+      );
+      assert.match(
+        rows.find(
+          ({ indexname }) =>
+            indexname === 'application_status_history_one_submission_idx',
+        ).predicate,
+        /draft.*submitted/i,
       );
     },
   );
@@ -329,6 +354,61 @@ try {
     );
   });
 
+  await check(
+    'transaction functions are backend-only and search-path hardened',
+    async () => {
+      const { rows } = await client.query(`
+      select
+        routine.proname as function_name,
+        routine.prosecdef as security_definer,
+        routine.proconfig,
+        has_function_privilege(
+          'anon', routine.oid, 'EXECUTE'
+        ) as anon_execute,
+        has_function_privilege(
+          'authenticated', routine.oid, 'EXECUTE'
+        ) as authenticated_execute,
+        has_function_privilege(
+          'service_role', routine.oid, 'EXECUTE'
+        ) as service_execute
+      from pg_proc routine
+      join pg_namespace namespace on namespace.oid = routine.pronamespace
+      where namespace.nspname = 'public'
+        and routine.proname in (
+          'mutate_application_question_transaction',
+          'submit_application_transaction',
+          'transition_application_status_transaction',
+          'propose_viewing_transaction',
+          'transition_viewing_transaction'
+        )
+      order by routine.proname
+    `);
+      assert.equal(rows.length, 5);
+      assert.ok(
+        rows.every(({ security_definer: value }) => value),
+        'transaction functions must be SECURITY DEFINER',
+      );
+      assert.ok(
+        rows.every(({ proconfig }) =>
+          proconfig.some((value) => value.startsWith('search_path=')),
+        ),
+        'transaction functions must pin search_path',
+      );
+      assert.ok(
+        rows.every(({ anon_execute: value }) => !value),
+        'anon must not execute transaction functions',
+      );
+      assert.ok(
+        rows.every(({ authenticated_execute: value }) => !value),
+        'authenticated must not execute transaction functions',
+      );
+      assert.ok(
+        rows.every(({ service_execute: value }) => value),
+        'service role must execute transaction functions',
+      );
+    },
+  );
+
   console.log(
     `Hosted Supabase verification passed: ${passed.length} read-only catalog checks.`,
   );
@@ -341,6 +421,7 @@ try {
       ? error.message
       : (error.code ?? error.name ?? 'UNKNOWN_ERROR');
   console.error(`Hosted Supabase verification failed: ${safeReason}`);
+  console.error(`Failed check: ${activeCheck}.`);
   process.exitCode = 1;
 } finally {
   await client.end().catch(() => {});
