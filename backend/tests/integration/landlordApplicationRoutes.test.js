@@ -307,7 +307,7 @@ describe('landlord application detail', () => {
     },
   );
 
-  it('does not expose generic, acceptance, or viewing mutation endpoints', async () => {
+  it('does not expose generic or legacy viewing mutation endpoints', async () => {
     const context = createLandlordApplicationTestContext();
     const id = LANDLORD_APPLICATION_IDS.submitted;
     const attempts = [
@@ -317,7 +317,6 @@ describe('landlord application detail', () => {
       request(context.app).post(
         `/api/v1/landlord/applications/${id}/under-review`,
       ),
-      request(context.app).post(`/api/v1/landlord/applications/${id}/accept`),
       request(context.app).post(
         `/api/v1/landlord/applications/${id}/invite-viewing`,
       ),

@@ -75,19 +75,33 @@ const requiredIndexes = [
   'verification_records_subject_idx',
   'viewings_application_id_idx',
   'viewings_one_open_per_application_idx',
+  'messages_conversation_id_created_at_id_idx',
+  'notifications_source_event_key_idx',
+  'notifications_user_id_created_at_id_idx',
+  'reports_one_active_per_reporter_target_idx',
+  'reports_status_created_at_id_idx',
+  'reports_target_type_created_at_id_idx',
+  'verification_records_status_created_at_idx',
+  'verification_records_one_active_idx',
+  'listings_admin_queue_idx',
 ];
 
 const expectedTriggers = [
   'application_answers_require_draft',
   'application_answers_set_updated_at',
   'application_questions_set_updated_at',
+  'application_status_notification_trigger',
   'applications_set_updated_at',
   'conversations_set_updated_at',
   'landlord_profiles_set_updated_at',
   'listings_set_updated_at',
+  'message_notification_trigger',
   'profiles_set_updated_at',
   'properties_set_updated_at',
+  'reports_set_updated_at',
   'tenant_profiles_set_updated_at',
+  'verification_records_set_updated_at',
+  'viewing_notification_trigger',
   'viewings_set_updated_at',
 ];
 
@@ -127,7 +141,18 @@ try {
         '202608190005',
         '202608220001',
         '202608220002',
-        '202608220003'
+        '202608220003',
+        '202608220004',
+        '202608240001',
+        '202608250001',
+        '202608260001',
+        '202608260002',
+        '202608270001',
+        '202608280001',
+        '202608290001',
+        '202608290002',
+        '202608300001',
+        '202608300002'
       ])
       order by version
     `);
@@ -142,6 +167,17 @@ try {
           '202608220001',
           '202608220002',
           '202608220003',
+          '202608220004',
+          '202608240001',
+          '202608250001',
+          '202608260001',
+          '202608260002',
+          '202608270001',
+          '202608280001',
+          '202608290001',
+          '202608290002',
+          '202608300001',
+          '202608300002',
         ],
       );
     },
@@ -178,7 +214,7 @@ try {
     `,
       [expectedTables],
     );
-    assert.deepEqual(rows[0], { primary_keys: 21, foreign_keys: 33 });
+    assert.deepEqual(rows[0], { primary_keys: 21, foreign_keys: 35 });
   });
 
   await check(
@@ -379,11 +415,22 @@ try {
           'submit_application_transaction',
           'transition_application_status_transaction',
           'propose_viewing_transaction',
-          'transition_viewing_transaction'
+          'transition_viewing_transaction',
+          'create_conversation_transaction',
+          'send_message_transaction',
+          'mark_conversation_read_transaction',
+          'create_viewing_cancel_notification',
+          'create_report_transaction',
+          'moderate_report_transaction'
+          ,'create_verification_transaction'
+          ,'moderate_verification_transaction'
+          ,'admin_review_listing_transaction'
+          ,'admin_account_state_transaction'
+          ,'accept_application_transaction'
         )
       order by routine.proname
     `);
-      assert.equal(rows.length, 5);
+      assert.equal(rows.length, 16);
       assert.ok(
         rows.every(({ security_definer: value }) => value),
         'transaction functions must be SECURITY DEFINER',

@@ -29,6 +29,15 @@ import LandlordApplicantListPage from './pages/application/LandlordApplicantList
 import LandlordApplicationDetailPage from './pages/application/LandlordApplicationDetailPage.jsx';
 import ConversationListPage from './pages/conversation/ConversationListPage.jsx';
 import ConversationDetailPage from './pages/conversation/ConversationDetailPage.jsx';
+import NotificationPage from './pages/notification/NotificationPage.jsx';
+import AdminReportListPage from './pages/admin/AdminReportListPage.jsx';
+import AdminReportDetailPage from './pages/admin/AdminReportDetailPage.jsx';
+import AdminVerificationListPage from './pages/admin/AdminVerificationListPage.jsx';
+import AdminVerificationDetailPage from './pages/admin/AdminVerificationDetailPage.jsx';
+import AdminListingListPage from './pages/admin/AdminListingListPage.jsx';
+import AdminListingDetailPage from './pages/admin/AdminListingDetailPage.jsx';
+import AdminUserListPage from './pages/admin/AdminUserListPage.jsx';
+import AdminUserDetailPage from './pages/admin/AdminUserDetailPage.jsx';
 
 export default function App() {
   return (
@@ -101,6 +110,78 @@ export default function App() {
         element={
           <ProtectedRoute allowedRoles={['TENANT', 'LANDLORD']}>
             <ConversationDetailPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/notifications"
+        element={
+          <ProtectedRoute allowedRoles={['TENANT', 'LANDLORD']}>
+            <NotificationPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/listings"
+        element={
+          <ProtectedRoute allowedRoles={['ADMIN']}>
+            <AdminListingListPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/listings/:listingId"
+        element={
+          <ProtectedRoute allowedRoles={['ADMIN']}>
+            <AdminListingDetailPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/users"
+        element={
+          <ProtectedRoute allowedRoles={['ADMIN']}>
+            <AdminUserListPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/users/:userId"
+        element={
+          <ProtectedRoute allowedRoles={['ADMIN']}>
+            <AdminUserDetailPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/reports"
+        element={
+          <ProtectedRoute allowedRoles={['ADMIN']}>
+            <AdminReportListPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/reports/:reportId"
+        element={
+          <ProtectedRoute allowedRoles={['ADMIN']}>
+            <AdminReportDetailPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/verifications"
+        element={
+          <ProtectedRoute allowedRoles={['ADMIN']}>
+            <AdminVerificationListPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/verifications/:verificationId"
+        element={
+          <ProtectedRoute allowedRoles={['ADMIN']}>
+            <AdminVerificationDetailPage />
           </ProtectedRoute>
         }
       />

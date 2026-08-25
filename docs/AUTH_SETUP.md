@@ -97,3 +97,17 @@ test doubles. They verify bearer parsing, `getClaims` identity handling, profile
 authorization, frontend session behavior, callback exchange, and recovery flows.
 These tests do not claim that a specific remote Supabase project's email delivery
 or dashboard configuration has been verified.
+
+## Private-beta production URLs
+
+Use the canonical Vercel HTTPS origin as the Supabase Auth Site URL and add exact
+redirect entries for:
+
+```text
+https://<canonical-frontend-origin>/auth/callback
+https://<canonical-frontend-origin>/auth/reset-password
+```
+
+Do not use a production wildcard. Localhost entries may remain only for the
+separate development workflow. Re-test registration, confirmation, login,
+logout, recovery, reset, and callback session handling after any domain change.

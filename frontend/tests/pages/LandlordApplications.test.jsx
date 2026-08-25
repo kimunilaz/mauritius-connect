@@ -390,6 +390,57 @@ describe('landlord application detail', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('accepts only a viewing-completed application after confirmation', async () => {
+    vi.stubGlobal(
+      'confirm',
+      vi.fn(() => true),
+    );
+    let accepted = false;
+    const fetchMock = vi.fn(async (url, options = {}) => {
+      if (url.endsWith('/auth/me')) return profileResponse(landlordProfile);
+      if (url.endsWith(`/${APPLICATION_ID}/accept`)) {
+        expect(options.method).toBe('POST');
+        expect(options.headers.Authorization).toBe(
+          'Bearer verified-access-token',
+        );
+        accepted = true;
+        return jsonResponse(200, {
+          success: true,
+          data: { application_status: 'ACCEPTED', listing_status: 'RENTED' },
+          meta: { transitioned_now: true },
+        });
+      }
+      return jsonResponse(200, {
+        success: true,
+        data: detail({
+          status: accepted ? 'ACCEPTED' : 'VIEWING_COMPLETED',
+          listing: {
+            ...detail().listing,
+            status: accepted ? 'RENTED' : 'ACTIVE',
+          },
+        }),
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderApp({
+      route: `/landlord/applications/${APPLICATION_ID}`,
+      client: sessionClient(),
+    });
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Accept application' }),
+    );
+    expect(globalThis.confirm).toHaveBeenCalledOnce();
+    expect(
+      await screen.findByText(
+        'Application accepted and listing marked rented.',
+      ),
+    ).toBeVisible();
+    expect(screen.getByText('Status: Rented')).toBeVisible();
+    expect(
+      screen.getByText('No further review actions are available.'),
+    ).toBeVisible();
+  });
+
   it('requires confirmation before rejection and shows terminal state after success', async () => {
     vi.stubGlobal(
       'confirm',

@@ -93,7 +93,7 @@ try {
     `);
     assert.deepEqual(result.rows[0], {
       primary_keys: 21,
-      foreign_keys: 33,
+      foreign_keys: 35,
     });
   });
 
@@ -712,6 +712,169 @@ try {
       where id = '06000000-0000-0000-0000-000000000001'
     `);
     assert.equal(question.rows[0].question_text, 'Why is this home suitable?');
+  });
+
+  await db.exec(`
+    insert into auth.users (id, email) values (
+      '00000000-0000-0000-0000-000000000009',
+      'fixture-admin@example.test'
+    );
+    insert into public.profiles (id, role, first_name, last_name) values (
+      '00000000-0000-0000-0000-000000000009',
+      'ADMIN', 'Fixture', 'Admin'
+    );
+  `);
+
+  await test('suspends a landlord atomically and leaves listings paused after reactivation', async () => {
+    const suspended = await db.query(`
+      select * from public.admin_account_state_transaction(
+        '00000000-0000-0000-0000-000000000009',
+        '00000000-0000-0000-0000-000000000004',
+        'SUSPEND'
+      )
+    `);
+    assert.deepEqual(suspended.rows[0], {
+      outcome: 'TRANSITIONED',
+      account_status: 'SUSPENDED',
+    });
+    const suspendedState = await db.query(`
+      select
+        (select account_status from public.profiles
+          where id = '00000000-0000-0000-0000-000000000004') as account_status,
+        (select status from public.listings
+          where id = '04000000-0000-0000-0000-000000000001') as listing_status,
+        (select count(*)::integer from public.admin_audit_logs
+          where target_id = '00000000-0000-0000-0000-000000000004'
+            and action = 'ACCOUNT_SUSPENDED') as audit_count
+    `);
+    assert.deepEqual(suspendedState.rows[0], {
+      account_status: 'SUSPENDED',
+      listing_status: 'PAUSED',
+      audit_count: 1,
+    });
+
+    const reactivated = await db.query(`
+      select * from public.admin_account_state_transaction(
+        '00000000-0000-0000-0000-000000000009',
+        '00000000-0000-0000-0000-000000000004',
+        'REACTIVATE'
+      )
+    `);
+    assert.deepEqual(reactivated.rows[0], {
+      outcome: 'TRANSITIONED',
+      account_status: 'ACTIVE',
+    });
+    const reactivatedState = await db.query(`
+      select
+        (select account_status from public.profiles
+          where id = '00000000-0000-0000-0000-000000000004') as account_status,
+        (select status from public.listings
+          where id = '04000000-0000-0000-0000-000000000001') as listing_status
+    `);
+    assert.deepEqual(reactivatedState.rows[0], {
+      account_status: 'ACTIVE',
+      listing_status: 'PAUSED',
+    });
+    await db.exec(`
+      update public.listings
+      set status = 'ACTIVE'
+      where id = '04000000-0000-0000-0000-000000000001'
+    `);
+  });
+
+  await db.exec(`
+    insert into public.properties (
+      id, landlord_id, property_type, district, locality, bedrooms, bathrooms
+    ) values (
+      '03000000-0000-0000-0000-000000000004',
+      '02000000-0000-0000-0000-000000000001',
+      'HOUSE', 'Moka', 'Reduit', 3, 2
+    );
+    insert into public.listings (
+      id, property_id, title, description, monthly_rent, available_from, status
+    ) values (
+      '04000000-0000-0000-0000-000000000003',
+      '03000000-0000-0000-0000-000000000004',
+      'Acceptance fixture', 'Acceptance integrity fixture.', 30000,
+      current_date, 'PAUSED'
+    );
+    insert into public.applications (
+      id, listing_id, tenant_id, status, submitted_at
+    ) values
+      (
+        '05000000-0000-0000-0000-000000000005',
+        '04000000-0000-0000-0000-000000000003',
+        '01000000-0000-0000-0000-000000000001',
+        'VIEWING_COMPLETED', now()
+      ),
+      (
+        '05000000-0000-0000-0000-000000000006',
+        '04000000-0000-0000-0000-000000000003',
+        '01000000-0000-0000-0000-000000000002',
+        'SUBMITTED', now()
+      ),
+      (
+        '05000000-0000-0000-0000-000000000007',
+        '04000000-0000-0000-0000-000000000003',
+        '01000000-0000-0000-0000-000000000003',
+        'DRAFT', null
+      );
+  `);
+
+  await test('accepts only while ACTIVE and closes competing submitted applications atomically', async () => {
+    const paused = await db.query(`
+      select * from public.accept_application_transaction(
+        '00000000-0000-0000-0000-000000000004',
+        '05000000-0000-0000-0000-000000000005'
+      )
+    `);
+    assert.equal(paused.rows[0].outcome, 'INVALID_TRANSITION');
+
+    await db.exec(`
+      update public.listings
+      set status = 'ACTIVE'
+      where id = '04000000-0000-0000-0000-000000000003'
+    `);
+    const accepted = await db.query(`
+      select * from public.accept_application_transaction(
+        '00000000-0000-0000-0000-000000000004',
+        '05000000-0000-0000-0000-000000000005'
+      )
+    `);
+    const repeated = await db.query(`
+      select * from public.accept_application_transaction(
+        '00000000-0000-0000-0000-000000000004',
+        '05000000-0000-0000-0000-000000000005'
+      )
+    `);
+    assert.equal(accepted.rows[0].outcome, 'TRANSITIONED');
+    assert.equal(repeated.rows[0].outcome, 'ALREADY_TARGET');
+
+    const state = await db.query(`
+      select
+        (select status from public.listings
+          where id = '04000000-0000-0000-0000-000000000003') as listing_status,
+        (select status from public.applications
+          where id = '05000000-0000-0000-0000-000000000005') as accepted_status,
+        (select status from public.applications
+          where id = '05000000-0000-0000-0000-000000000006') as competing_status,
+        (select status from public.applications
+          where id = '05000000-0000-0000-0000-000000000007') as draft_status,
+        (select count(*)::integer from public.application_status_history
+          where application_id = '05000000-0000-0000-0000-000000000005'
+            and to_status = 'ACCEPTED') as accepted_history,
+        (select count(*)::integer from public.application_status_history
+          where application_id = '05000000-0000-0000-0000-000000000006'
+            and to_status = 'REJECTED') as rejected_history
+    `);
+    assert.deepEqual(state.rows[0], {
+      listing_status: 'RENTED',
+      accepted_status: 'ACCEPTED',
+      competing_status: 'REJECTED',
+      draft_status: 'DRAFT',
+      accepted_history: 1,
+      rejected_history: 1,
+    });
   });
 
   await db.exec(`

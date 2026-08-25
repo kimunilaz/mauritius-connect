@@ -41,6 +41,14 @@ import {
   createConversationRouter,
   createListingConversationRouter,
 } from './conversationRoutes.js';
+import { createMessageRouter } from './messageRoutes.js';
+import { createNotificationRouter } from './notificationRoutes.js';
+import { createAdminReportRouter, createReportRouter } from './reportRoutes.js';
+import {
+  createAdminVerificationRouter,
+  createVerificationRouter,
+} from './verificationRoutes.js';
+import { createAdminToolRouter } from './adminToolRoutes.js';
 
 export function createApiRouter({
   authService,
@@ -58,6 +66,11 @@ export function createApiRouter({
   applicationTransitionService,
   viewingService,
   conversationService,
+  messageService,
+  notificationService,
+  reportService,
+  verificationService,
+  applicationAcceptanceService,
 } = {}) {
   const apiRouter = Router();
 
@@ -95,6 +108,7 @@ export function createApiRouter({
       landlordApplicationService,
       applicationTransitionService,
       viewingService,
+      applicationAcceptanceService,
     ),
   );
   apiRouter.use(
@@ -156,6 +170,28 @@ export function createApiRouter({
     '/conversations',
     createConversationRouter(authService, conversationService),
   );
+  apiRouter.use(
+    '/conversations',
+    createMessageRouter(authService, messageService),
+  );
+  apiRouter.use(
+    '/notifications',
+    createNotificationRouter(authService, notificationService),
+  );
+  apiRouter.use('/reports', createReportRouter(authService, reportService));
+  apiRouter.use(
+    '/admin/reports',
+    createAdminReportRouter(authService, reportService),
+  );
+  apiRouter.use(
+    '/landlord/verifications',
+    createVerificationRouter(authService, verificationService),
+  );
+  apiRouter.use(
+    '/admin/verifications',
+    createAdminVerificationRouter(authService, verificationService),
+  );
+  apiRouter.use('/admin', createAdminToolRouter(authService));
 
   return apiRouter;
 }

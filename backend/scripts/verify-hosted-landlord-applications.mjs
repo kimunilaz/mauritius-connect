@@ -438,7 +438,7 @@ async function run() {
     await check(
       'no unsupported landlord state-mutation route exists',
       async () => {
-        for (const action of ['under-review', 'accept', 'invite-viewing']) {
+        for (const action of ['under-review', 'invite-viewing']) {
           assert.equal(
             (
               await api(

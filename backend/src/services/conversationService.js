@@ -50,6 +50,7 @@ export function createConversationService({
       counterpartyProfile,
       availability: available ? 'AVAILABLE' : 'UNAVAILABLE',
       listing: role === 'TENANT' && !available ? null : listing,
+      viewerId: userId,
     });
   }
 

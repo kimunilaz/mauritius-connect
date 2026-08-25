@@ -1,5 +1,13 @@
 # Mauritius Rental Platform — API Specification
 
+## Verification
+
+Landlords may create and list their own `LANDLORD_IDENTITY` or owned-property `PROPERTY_AUTHORITY` requests through `/api/v1/landlord/verifications`. Evidence is uploaded as a private multipart file at `/:verificationId/evidence`; the backend validates and stores it under a generated path. Active ADMIN users use `/api/v1/admin/verifications` and explicit `/review`, `/approve`, and `/reject` actions. Only `VERIFIED` records contribute public `landlord_verified` or `property_authority_verified` booleans; verification is manual evidence review and is not a legal guarantee.
+
+## Admin tools
+
+Active ADMIN users may review listings through explicit `/admin/listings/:id/approve` and `/return-to-draft` actions, and administer users through `/admin/users` plus explicit suspend/reactivate actions. There is no generic listing-status endpoint or user deletion/impersonation API.
+
 ## 1. API Objective
 
 The API defines the contract between:
@@ -2663,27 +2671,85 @@ POST /api/v1/viewings/:viewingId/no-show
 ## Messaging
 
 ```text
+POST /api/v1/listings/:listingId/conversation
 GET  /api/v1/conversations
-POST /api/v1/listings/:listingId/conversations
 GET  /api/v1/conversations/:conversationId
+```
+
+Conversation creation is restricted to an authenticated ACTIVE TENANT and an
+ACTIVE listing whose property is not archived. The tenant and listing
+landlord are derived by the backend; participant IDs are never accepted from
+the request. Creation is idempotent and concurrency-safe, returning one
+conversation with exactly the two participant memberships. Both participants
+retain container access after the listing becomes unavailable, while tenant
+responses omit private listing fields and expose only minimal counterparty
+identity (`first_name`, `last_name`, and `profile_photo_url`). Messages,
+read-state mutation, realtime delivery, notifications, and attachments are
+deferred to TASK-018 and later tasks.
+
+## Messages (TASK-018)
+
+```text
 GET  /api/v1/conversations/:conversationId/messages
 POST /api/v1/conversations/:conversationId/messages
 POST /api/v1/conversations/:conversationId/read
 ```
 
+All message endpoints require an ACTIVE authenticated participant. Sender
+identity and read-state ownership are derived from the verified session; an
+unrelated user receives `404 CONVERSATION_NOT_FOUND`. Message bodies are
+trimmed plain text, required, and limited to 4000 characters. History uses
+`page` and `limit` query parameters (default 50, maximum 100) with
+`created_at ASC, id ASC` ordering. Messages are immutable. Conversation lists
+include a safe last-message preview and an unread count containing only
+counterparty messages newer than the caller's `last_read_at`; own messages do
+not count. `POST /read` updates only the caller's participant row. Direct
+publishable-key reads and writes remain blocked by deny-by-default RLS.
+
 ## Notifications
 
 ```text
 GET  /api/v1/notifications
+GET  /api/v1/notifications/unread-count
 POST /api/v1/notifications/:notificationId/read
 POST /api/v1/notifications/read-all
 ```
+
+All notification endpoints require an authenticated ACTIVE TENANT or
+LANDLORD. List supports `page` (default 1), `limit` (default 20, maximum 100),
+and `unread_only`; ordering is deterministic `created_at DESC, id DESC`.
+Responses expose only safe notification fields and a protected navigation
+target. Recipients are derived by the database event transactions. Supported
+events are application submission, review, shortlist, rejection, withdrawal;
+viewing proposal, confirmation, decline, cancellation, completion, and
+no-show; and receipt of a new message. Message notifications never include
+message bodies. Read-one and read-all are idempotent and scoped to the
+authenticated user's notifications; cross-user IDs return a privacy-safe 404.
 
 ## Reports
 
 ```text
 POST /api/v1/reports
+GET  /api/v1/admin/reports
+GET  /api/v1/admin/reports/:reportId
+POST /api/v1/admin/reports/:reportId/review
+POST /api/v1/admin/reports/:reportId/resolve
+POST /api/v1/admin/reports/:reportId/dismiss
 ```
+
+Reports support only `LISTING` and `MESSAGE` targets. Listing reasons are
+`FRAUD_OR_SCAM`, `MISLEADING_INFORMATION`, `INAPPROPRIATE_CONTENT`,
+`DUPLICATE`, and `OTHER`; message reasons are `HARASSMENT`, `SPAM`,
+`FRAUD_OR_SCAM`, `INAPPROPRIATE_CONTENT`, and `OTHER`. Reporter identity is
+derived from the verified session. Message reports require conversation
+participation and unrelated IDs return `404 MESSAGE_NOT_FOUND`. Details are
+trimmed and limited to 1000 characters. An active duplicate by the same
+reporter and target is reused, including concurrent requests.
+
+Only ACTIVE ADMIN accounts may access the admin queue/detail/actions. Allowed
+transitions are OPEN to UNDER_REVIEW/RESOLVED/DISMISSED and UNDER_REVIEW to
+RESOLVED/DISMISSED. There is no generic report status PATCH endpoint. Real
+moderation transitions write an `admin_audit_logs` record atomically.
 
 ## Admin
 

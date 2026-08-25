@@ -14,6 +14,21 @@ function normalizeError(error) {
     });
   }
 
+  if (error.code === 'LIMIT_FILE_SIZE') {
+    return new AppError({
+      statusCode: 413,
+      code: 'UPLOAD_TOO_LARGE',
+      message: 'Uploaded file exceeds the permitted size.',
+    });
+  }
+  if (error.name === 'MulterError') {
+    return new AppError({
+      statusCode: 422,
+      code: 'INVALID_UPLOAD',
+      message: 'The upload could not be accepted.',
+    });
+  }
+
   return new AppError({
     statusCode: 500,
     code: 'INTERNAL_ERROR',

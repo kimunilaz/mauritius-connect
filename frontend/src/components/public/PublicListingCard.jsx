@@ -41,6 +41,17 @@ export default function PublicListingCard({ listing, children }) {
           {listing.property.furnished ? ' · Furnished' : ''}
         </p>
         <p>Available {formatDate(listing.available_from)}</p>
+        {listing.landlord_verified || listing.property_authority_verified ? (
+          <p className="trust-indicators">
+            {listing.landlord_verified ? 'Identity reviewed' : null}
+            {listing.landlord_verified && listing.property_authority_verified
+              ? ' Â· '
+              : null}
+            {listing.property_authority_verified
+              ? 'Property evidence reviewed'
+              : null}
+          </p>
+        ) : null}
         {children}
       </div>
     </article>

@@ -1,876 +1,731 @@
-# TASK-017 — Conversations
+# TASK-026 — Deployment & Private-Beta Readiness
 
 ## Status
 
-READY
+IN PROGRESS — awaiting production-provider authorization and login
 
 ## Priority
 
-P0 — Communication Foundation
+P0 — Release
 
 ## Objective
 
-Implement secure conversation creation, membership, listing, and detail access between a tenant and the landlord of a rental listing.
+Prepare and deploy the completed prototype for a controlled private beta.
+
+The feature set remains FROZEN.
 
 This task covers:
 
-- tenant-created conversation for an eligible listing
-- exactly one conversation per tenant/landlord/listing
-- exactly two authorized participants
-- conversation listing
-- conversation detail
-- minimal counterparty identity
-- historical conversation access
-- concurrency-safe/idempotent creation
-- frontend conversation foundation
+- production-ready environment configuration
+- frontend deployment
+- backend deployment
+- Supabase production configuration
+- Auth redirect configuration
+- production CORS
+- health checks
+- deployment smoke testing
+- release/rollback documentation
+- private-beta operational checklist
 
-Do NOT implement:
-
-- sending messages
-- message history
-- unread-message counts
-- notifications
-- attachments
-- URL previews
-- typing indicators
-- realtime messaging
-- acceptance
-- additional application transitions
-
-TASK-018 owns Messages.
+Do NOT implement new product functionality.
 
 ---
 
-## 1. Required Reading
+# 1. Required Reading
 
-Read all governing documentation and inspect TASK-000 through TASK-016 before changing anything.
+Read all governing documentation and inspect TASK-000 through TASK-025.
 
 Especially:
 
-docs/PRODUCT_SPEC.md
 docs/ARCHITECTURE.md
-docs/DATABASE.md
-docs/API_SPEC.md
 docs/SECURITY.md
-docs/DEVELOPMENT_RULES.md
 docs/TESTING.md
-tasks/CURRENT_TASK.md
+docs/DEVELOPMENT_RULES.md
+README.md
 
-Reuse existing authentication, roles, listing eligibility, ownership, serializers, PostgreSQL transaction patterns, RLS posture, frontend API client, and hosted Supabase verification infrastructure.
-
----
-
-## 2. Existing Tables
-
-Use:
-
-conversations
-
-Fields:
-
-id
-listing_id
-tenant_user_id
-landlord_user_id
-created_at
-updated_at
-
-Existing invariant:
-
-UNIQUE(listing_id, tenant_user_id, landlord_user_id)
-
-Use:
-
-conversation_participants
-
-Fields:
-
-conversation_id
-user_id
-last_read_at
-joined_at
-
-Primary key:
-
-(conversation_id, user_id)
-
-Do not redesign these tables unless a genuine correctness issue requires a new migration.
+Review all environment-variable usage before deployment.
 
 ---
 
-## 3. Required API
+# 2. Feature Freeze
 
-Implement:
+Allowed:
 
-POST /api/v1/listings/:listingId/conversation
+- deployment configuration
+- environment fixes
+- production-only configuration fixes
+- deployment bug fixes
+- broken URL/path fixes
+- CORS/Auth callback fixes
+- health/readiness fixes
+- documentation
+- release scripts/checks
 
-GET /api/v1/conversations
+Not allowed:
 
-GET /api/v1/conversations/:conversationId
-
-Do NOT implement:
-
-POST /conversations/:id/messages
-GET /conversations/:id/messages
-POST /conversations/:id/read
-
-Those belong to TASK-018.
-
----
-
-## 4. Who May Create a Conversation
-
-Only an authenticated:
-
-ACTIVE TENANT
-
-may create a conversation through:
-
-POST /api/v1/listings/:listingId/conversation
-
-LANDLORD and ADMIN must not create tenant-side listing conversations through this endpoint.
+- new rental features
+- redesigns
+- new workflow states
+- analytics product features
+- payments
+- contracts
+- AI recommendations
 
 ---
 
-## 5. New Conversation Eligibility
+# 3. Deployment Architecture
 
-A new conversation may be created only when:
+Target architecture:
 
-listing.status = ACTIVE
+Frontend:
+Vercel
 
-AND
+Backend:
+use the existing documented supported platform selected for this repository
+(Railway, Render, or Fly.io)
 
-property.archived_at IS NULL
+Database/Auth/Storage:
+Supabase
 
-Reuse TASK-007 public-listing eligibility.
-
-Pre-application conversation is allowed.
-
-A tenant does NOT need an application before starting a conversation.
-
-Do not require saved-listing or application state.
+Do not introduce new infrastructure unnecessarily.
 
 ---
 
-## 6. Participant Derivation
+# 4. Environment Separation
 
-Never accept participant IDs from client input.
+Do not expose development secrets in production.
 
-Derive:
+Ensure clear separation between:
 
-tenant_user_id
-from verified authenticated TENANT profile.
+development
+test/integration
+production
 
-Derive:
+Frontend production variables may include only browser-safe values such as:
 
-landlord_user_id
-from:
+VITE_SUPABASE_URL
+VITE_SUPABASE_PUBLISHABLE_KEY
+VITE_API_BASE_URL
 
-listing
-→ property
-→ landlord_profiles
-→ profiles.user identity.
+Backend production variables may include:
 
-listing_id comes from the URL.
+SUPABASE_URL
+SUPABASE_PUBLISHABLE_KEY
+SUPABASE_SECRET_KEY
+DATABASE_URL
+frontend/CORS origin configuration
+environment/runtime settings
 
-Do not trust:
-
-tenant_user_id
-landlord_user_id
-user_id
-participants
-
-from request bodies.
+Never expose backend secrets through VITE variables.
 
 ---
 
-## 7. Exactly Two Participants
-
-Every normal V1 conversation must contain exactly:
-
-1 tenant
-1 listing landlord
-
-Create both corresponding:
-
-conversation_participants
-
-rows.
-
-Do not allow arbitrary users to join a conversation.
-
-Do not implement group conversations.
-
----
-
-## 8. Atomic Conversation Creation
-
-Conversation creation and the two participant rows must behave atomically.
-
-The system must never persist:
-
-conversation without participants
-
-or:
-
-partially populated participant membership.
-
-A narrowly scoped backend-only PostgreSQL transaction function is acceptable if required.
-
-If introduced:
-
-- create a NEW migration
-- historical migrations remain untouched
-- revoke execution from PUBLIC, anon, authenticated
-- service-role backend only
-- no dynamic SQL
-- no credentials
-
----
-
-## 9. Idempotency
-
-Repeated creation for the same:
-
-listing
-tenant
-landlord
-
-must return the same conversation.
-
-Do not create duplicates.
-
-The database UNIQUE constraint remains the final concurrency guarantee.
-
----
-
-## 10. Concurrent Creation
-
-Multiple simultaneous POST requests must result in:
-
-one conversation row
-exactly two participant rows
-
-No duplicate membership.
-
-No raw PostgreSQL error.
-
-Add hosted concurrency verification.
-
----
-
-## 11. Non-Public Listing
-
-Attempting to create a NEW conversation for:
-
-DRAFT
-PENDING_REVIEW
-PAUSED
-RENTED
-CLOSED
-
-or archived-property listing must return:
-
-404 LISTING_NOT_FOUND
-
-Do not reveal private listing existence.
-
----
-
-## 12. Existing Conversation After Listing Changes
-
-Once a conversation exists, participants may continue to access the conversation container even if the listing later becomes:
-
-PAUSED
-CLOSED
-RENTED
-
-or otherwise non-public.
-
-Do not delete the conversation.
-
-Message-send policy for unavailable listings belongs to TASK-018.
-
----
-
-## 13. Conversation List
-
-GET /api/v1/conversations
-
-Requires:
-
-verified authentication
-ACTIVE account
-
-Allowed roles:
-
-TENANT
-LANDLORD
-
-Return only conversations where the authenticated user is a participant.
-
-Support:
-
-page
-limit
-
-Defaults:
-
-page = 1
-limit = 20
-
-Maximum:
-
-limit = 100
-
-Order:
-
-updated_at DESC
-id DESC
-
----
-
-## 14. Conversation List Serializer
-
-Return only safe information.
-
-Example concepts:
-
-id
-created_at
-updated_at
-
-counterparty:
-first_name
-last_name
-profile_photo_url
-
-listing context:
-listing_id
-availability
-
-For TENANT:
-
-if listing remains publicly eligible:
-use a minimal safe public listing context.
-
-If listing is no longer public:
-
-availability = UNAVAILABLE
-listing = null
-
-Do not leak newly private listing data.
-
-For LANDLORD:
-
-safe owned listing context may include:
-
-id
-title
-status
-
-Do not expose unnecessary property/private fields.
-
----
-
-## 15. Counterparty Privacy
-
-Conversation participants may see minimal identity:
-
-first_name
-last_name
-profile_photo_url
-
-Do NOT expose:
-
-email
-phone
-auth user IDs
-tenant IDs
-landlord IDs
-account status
-income
-employer/school
-preferred locations
-Supabase metadata
-
-TASK-018 may later determine whether contact details ever become appropriate.
-
----
-
-## 16. Conversation Detail
-
-GET /api/v1/conversations/:conversationId
-
-Only a participant may access.
-
-Unrelated user:
-
-404 CONVERSATION_NOT_FOUND
-
-Return:
-
-conversation metadata
-safe counterparty identity
-safe listing context
-
-Do NOT return messages yet.
-
-Do NOT return participant internal IDs.
-
----
-
-## 17. Membership Enforcement
-
-Authorization must use conversation membership derived from the database.
-
-Do not trust:
-
-role alone
-listing ownership alone
-client-supplied participant IDs
-
-A user not present in the conversation must not access it.
-
----
-
-## 18. last_read_at
-
-Do not implement unread-message behavior yet.
-
-Creating participant rows may leave:
-
-last_read_at = NULL
-
-Do not invent unread counts when messages do not exist yet.
-
-TASK-018 will define read-state semantics.
-
----
-
-## 19. RLS
-
-Do not weaken deny-by-default RLS.
-
-Conversation reads/writes continue through Node.
-
-Do not create browser-readable policies for:
-
-conversations
-conversation_participants
-
-Direct publishable-key reads/writes must remain blocked.
-
----
-
-## 20. Frontend Routes
-
-Implement:
-
-/conversations
-
-/conversations/:conversationId
-
-Accessible to authenticated ACTIVE:
-
-TENANT
-LANDLORD
-
-Do not create a message input.
-
----
-
-## 21. Public Listing Integration
-
-For an authenticated TENANT viewing an ACTIVE listing, provide an appropriate action such as:
-
-Contact landlord
-
-or:
-
-Start conversation
-
-The action should idempotently create/retrieve the conversation and navigate to:
-
-/conversations/:conversationId
-
-Logged-out visitor should receive a login affordance.
-
-LANDLORD should not see the tenant-side start-conversation action.
-
----
-
-## 22. Conversation Detail UX
-
-Until TASK-018, show:
-
-- counterparty identity
-- rental context
-- conversation foundation state
-
-Do not fake message sending.
-
-Do not render disabled fake chat bubbles or claim messaging works.
-
-A concise temporary state is acceptable during development.
-
----
-
-## 23. Conversation List UX
-
-Show:
-
-counterparty name
-safe rental context
-created/updated date where useful
-
-Do not show:
-
-unread count
-last message
-message preview
-
-because messages are not implemented.
-
----
-
-## 24. Empty State
-
-Example:
-
-No conversations yet.
-
-When you contact a landlord about a rental, the conversation will appear here.
-
-For landlord:
-
-No tenant conversations yet.
-
----
-
-## 25. Security Tests
-
-Test:
-
-TENANT creates conversation for ACTIVE listing.
-
-LANDLORD cannot use tenant create endpoint.
-
-SUSPENDED/DELETED user blocked.
-
-Tenant A cannot access Tenant B conversation.
-
-Landlord A cannot access Landlord B conversation.
-
-Unrelated authenticated user receives 404.
-
-Protected participant fields cannot be mass-assigned.
-
----
-
-## 26. Idempotency & Concurrency Tests
-
-Mandatory:
-
-repeated creation returns same conversation.
-
-multiple concurrent creates produce:
-
-one conversation
-two participant rows
-
-No duplicate memberships.
-
-No raw database errors.
-
----
-
-## 27. Eligibility Tests
-
-New conversation:
-
-ACTIVE listing → succeeds
-
-DRAFT → 404
-PENDING_REVIEW → 404
-PAUSED → 404
-RENTED → 404
-CLOSED → 404
-archived property → 404
-
-Existing conversation remains readable after listing becomes unavailable.
-
----
-
-## 28. Privacy Tests
-
-Explicitly verify responses do NOT expose:
-
-tenant_user_id
-landlord_user_id
-participant user IDs
-email
-phone
-income
-employment
-preferred locations
-account status
-exact address
-coordinates
-Storage paths
-Supabase metadata
-
-For a TENANT, a now-unavailable listing must not leak private listing fields through the conversation API.
-
----
-
-## 29. Frontend Tests
-
-At minimum:
-
-conversation routes protected
-
-TENANT start-conversation action
-
-logged-out login affordance
-
-LANDLORD does not see tenant creation action
-
-conversation creation redirects correctly
-
-conversation list
-
-empty state
-
-conversation detail
-
-counterparty display
-
-unavailable listing presentation
-
-cross-role/access protection
-
-no message form exists
-
-no unread UI exists
-
----
-
-## 30. Hosted Supabase Verification
-
-Using controlled integration records verify:
-
-TENANT creates ACTIVE-listing conversation
-
-repeat creation returns same conversation
-
-concurrent creation produces one conversation/two participants
-
-LANDLORD sees conversation in own list
-
-TENANT sees conversation in own list
-
-unrelated tenant cannot access it
-
-unrelated landlord cannot access it
-
-non-public listing cannot receive NEW conversation
-
-existing conversation remains accessible after listing becomes non-public
-
-private listing data remains hidden from tenant
-
-minimal counterparty identity only
-
-publishable-key direct conversations/participants reads and writes remain blocked
-
-all previous hosted regressions remain healthy.
-
----
-
-## 31. Database Changes
-
-A NEW migration is acceptable if required for atomic conversation/participant creation.
-
-Do not modify historical migrations.
-
----
-
-## 32. Dependencies
-
-Expected:
-
-none.
-
----
-
-## 33. Documentation
-
-Update:
-
-docs/API_SPEC.md
-
-Document:
-
-POST /listings/:listingId/conversation
-GET /conversations
-GET /conversations/:conversationId
-
-Document:
-
-- tenant-only creation
-- ACTIVE-listing requirement for NEW conversations
-- idempotency
-- participant privacy
-- historical conversation access
-- messages deferred
-
----
-
-## 34. Required Verification
+# 5. Secret Audit
+
+Before deployment verify:
+
+- no `.env` files tracked
+- no secret keys in source
+- no DB credentials in frontend
+- no credentials in build output
+- no credentials in deployment documentation
+- no secrets printed during deployment
 
 Run:
 
-npm run lint
-npm run test
-npm run build
-npm run format:check
-git diff --check
+npm run security:check
 
-Run:
-
-database verification
-all hosted regressions
-TASK-017 hosted conversation/concurrency checks.
+before release.
 
 ---
 
-## 35. Acceptance Criteria
+# 6. Production Supabase
 
-TASK-017 is complete only when:
+Prefer a production/private-beta Supabase project isolated from destructive development testing.
 
-- [ ] Conversation creation endpoint exists.
-- [ ] Only ACTIVE TENANT may create.
-- [ ] New conversation requires publicly eligible ACTIVE listing.
-- [ ] Pre-application conversation is allowed.
-- [ ] Tenant identity is backend-derived.
-- [ ] Landlord identity is backend-derived.
-- [ ] Exactly two participants are created.
-- [ ] Conversation + membership creation is atomic.
-- [ ] Repeated creation is idempotent.
-- [ ] Concurrent creation remains one conversation.
-- [ ] Conversation list exists.
-- [ ] Conversation detail exists.
-- [ ] Only participants may access.
-- [ ] Cross-user access returns privacy-safe 404.
-- [ ] Existing conversation survives listing becoming unavailable.
-- [ ] Tenant does not gain private listing access through conversation history.
-- [ ] Counterparty identity is minimal.
-- [ ] No contact/private profile information exposed.
-- [ ] RLS remains deny-by-default.
-- [ ] Direct browser table access remains blocked.
-- [ ] /conversations frontend exists.
-- [ ] /conversations/:id frontend exists.
-- [ ] Tenant listing action creates/reuses conversation.
-- [ ] No message sending implemented.
-- [ ] No unread counts implemented.
-- [ ] No notification functionality implemented.
-- [ ] Hosted checks pass.
-- [ ] Previous regressions pass.
-- [ ] No secrets committed.
+Do not reset or destroy the existing development project.
+
+If a separate production project is used:
+
+apply all migrations forward-only using the established migration workflow.
+
+Verify the complete migration ledger.
+
+Do not manually recreate tables through the dashboard.
 
 ---
 
-## 36. Completion Report
+# 7. Migration Gate
 
-Report:
+Before production deployment confirm:
 
-### Summary
+all TASK-001 through TASK-025 migrations are present and ordered correctly.
 
-### API
+Run database/catalog verification.
 
-List all three endpoints.
+Production schema must match the repository migration ledger.
 
-### Creation Eligibility
+No migration rewriting.
 
-Explain ACTIVE-listing and tenant-only rules.
+No database reset.
 
-### Participants
+---
 
-Explain backend participant derivation.
+# 8. Supabase Storage
 
-### Atomicity & Idempotency
+Verify required buckets exist/configure reproducibly:
 
-Explain conversation + participant transaction and concurrency behavior.
-
-### Membership Security
-
-Explain participant-only access.
-
-### Privacy
-
-Explain counterparty and listing serialization, especially unavailable listings.
-
-### Frontend
-
-Report conversation list/detail/start-conversation behavior.
-
-### Messages
-
-Explicitly confirm messages were NOT implemented.
-
-### Database Changes
-
-List any new migration/function.
-
-### Dependencies
-
-Expected: none.
-
-### Hosted Supabase Verification
-
-Report real checks.
-
-### Tests
-
-Tests added:
-Tests run:
-Tests passed:
-Tests failed:
-Tests skipped:
-
-### Root Verification
-
-npm run lint
-npm run test
-npm run build
-npm run format:check
-git diff --check
-
-### Security
+property-images
+verification-evidence
 
 Confirm:
 
-RLS unchanged
-participants backend-derived
-direct browser access blocked
-contact/private data not exposed
-no credentials exposed.
+- private configuration
+- expected file limits
+- browser direct restrictions
+- signed/backend-mediated access behavior
 
-### Known Limitations
+Verification evidence must remain private.
+
+---
+
+# 9. Supabase Auth URLs
+
+Configure production:
+
+Site URL
+Redirect URLs
+
+for the deployed frontend.
+
+Ensure these flows work on production URLs:
+
+registration
+login
+logout
+email confirmation
+forgot password
+reset password
+PKCE callback
+
+Do not leave production dependent only on localhost callback URLs.
+
+---
+
+# 10. Production CORS
+
+Configure the backend allowlist for the actual deployed frontend origin.
+
+Production startup must fail safely if required CORS configuration is absent or invalid.
+
+Do not use wildcard `*` for private API access.
+
+Retain localhost development configuration separately.
+
+---
+
+# 11. Frontend API Configuration
+
+Production frontend must communicate with the deployed backend using configuration.
+
+Do not hard-code localhost API URLs.
+
+Confirm production build contains the intended backend base URL.
+
+---
+
+# 12. Backend Health
+
+Ensure production exposes:
+
+GET /api/v1/health
+
+Health endpoint should confirm the process is alive without leaking:
+
+credentials
+database URLs
+internal configuration
+stack traces
+
+Do not expose privileged diagnostics publicly.
+
+---
+
+# 13. Backend Instance Count
+
+TASK-023 rate limiting is process-local.
+
+For the private beta, deploy the backend in a topology consistent with that limitation.
+
+Prefer:
+
+one application instance
+
+unless the rate limiter is intentionally redesigned later.
+
+Document this limitation.
+
+Do not add Redis during TASK-026.
+
+---
+
+# 14. HTTPS
+
+Production frontend and backend must be served via HTTPS.
+
+No mixed-content requests.
+
+Supabase callbacks must use HTTPS production URLs.
+
+---
+
+# 15. Backend Production Behavior
+
+Verify:
+
+NODE_ENV=production
+
+Production errors must remain sanitized.
+
+No development stack traces.
+
+Logging must remain metadata-focused and must not log:
+
+tokens
+passwords
+messages
+application answers
+verification evidence
+secret keys
+
+---
+
+# 16. Build
+
+Production builds must succeed:
+
+frontend
+backend startup/runtime
+
+Run:
+
+npm run build
+
+No build-breaking warnings/errors.
+
+The existing Vite bundle >500 kB advisory may remain documented as LOW.
+
+Do not expand scope purely to remove that warning.
+
+---
+
+# 17. Production Database Verification
+
+Against the deployment database verify:
+
+migration ledger
+tables
+indexes
+constraints
+RLS
+function grants
+Storage configuration
+
+All privileged SECURITY DEFINER functions must remain service-role-only.
+
+---
+
+# 18. Production Smoke Test
+
+After deployment run a bounded production/private-beta smoke test.
+
+At minimum:
+
+public homepage/listings load
+
+login works
+
+protected route works
+
+TENANT can browse listing
+
+LANDLORD can access own dashboard
+
+ADMIN can access ADMIN area
+
+backend health works
+
+frontend reaches backend
+
+Supabase Auth session works
+
+No CORS failure
+
+No obvious browser console error
+
+Do not create destructive workflow data unless using controlled beta fixtures.
+
+---
+
+# 19. Critical Workflow Smoke
+
+Using controlled production/private-beta fixtures where safe, verify representative:
+
+listing access
+application creation
+message/conversation access
+
+Do not rerun destructive concurrency/load tests against production.
+
+Full heavy verification remains against the development/QA environment.
+
+---
+
+# 20. Security Production Gate
+
+Run:
+
+npm run security:check
+
+Confirm:
+
+zero HIGH/CRITICAL production vulnerabilities
+
+no tracked secrets
+
+no unexpected privileged function grants
+
+no public verification evidence
+
+no permissive RLS drift
+
+---
+
+# 21. Rate Limit Smoke
+
+Verify normal production usage is not incorrectly rate-limited.
+
+Do not intentionally flood the deployed service.
+
+Confirm expected 429 behavior using bounded controlled requests if safe.
+
+---
+
+# 22. Error Smoke
+
+Verify representative invalid request produces:
+
+safe product error
+
+not:
+
+stack trace
+PostgreSQL error
+filesystem path
+Supabase internal details
+
+---
+
+# 23. ADMIN Bootstrap
+
+Ensure the private-beta environment has at least one controlled ACTIVE ADMIN account.
+
+Do not make ADMIN publicly self-registerable.
+
+Do not commit ADMIN credentials.
+
+Document the secure manual bootstrap process without passwords.
+
+---
+
+# 24. Beta Test Accounts
+
+If controlled LANDLORD/TENANT accounts are needed for smoke testing:
+
+create them through normal Auth flows or approved operational tooling.
+
+Never commit test credentials.
+
+Clearly distinguish controlled test records from real beta users.
+
+---
+
+# 25. Private-Beta Access
+
+This is a controlled beta.
+
+Do not add a large new invitation system.
+
+Document how initial participants will be onboarded.
+
+Use existing registration/account controls unless a manual operational process is needed.
+
+---
+
+# 26. Operational Checklist
+
+Create a concise private-beta checklist covering:
+
+daily health check
+Supabase availability
+backend availability
+frontend availability
+new reports
+pending listing reviews
+pending verifications
+suspended accounts
+user-reported defects
+
+Do not build an operations dashboard.
+
+---
+
+# 27. Incident Basics
+
+Document what to do if:
+
+backend unavailable
+frontend unavailable
+Supabase unavailable
+secret suspected exposed
+abusive account identified
+incorrect listing becomes public
+
+Keep this as operational documentation.
+
+Do not introduce full incident-management infrastructure.
+
+---
+
+# 28. Rollback Plan
+
+Document deployment rollback.
+
+At minimum:
+
+frontend rollback/redeploy
+backend rollback/redeploy
+application commit rollback strategy
+
+Database migrations remain forward-only.
+
+Do NOT recommend destructive database rollback/reset.
+
+If a migration causes a defect:
+
+create a forward corrective migration.
+
+---
+
+# 29. Release Identification
+
+Document the Git commit/tag deployed to private beta.
+
+Create a release tag if consistent with repository workflow, for example:
+
+private-beta-v0.1.0
+
+Do not tag until all release gates pass.
+
+---
+
+# 30. Documentation
+
+Update:
+
+README.md
+
+with production-safe setup/deployment overview.
+
+Create/update:
+
+docs/DEPLOYMENT.md
 
 Include:
 
-messages deferred to TASK-018
-read/unread state deferred
-realtime deferred
-notifications deferred
-attachments deferred.
+architecture
+environment-variable names without values
+frontend deployment
+backend deployment
+Supabase migration process
+Auth URLs
+CORS
+Storage
+health check
+rollback
+known limitations
 
-### Recommended Next Task
+Create/update:
 
-TASK-018 — Messages
+docs/PRIVATE_BETA_CHECKLIST.md
+
+Do not include credentials.
+
+---
+
+# 31. Known Limitations
+
+Document clearly:
+
+- process-local rate limiting
+- no payments
+- no lease generation
+- no digital signatures
+- no escrow
+- manual verification
+- no MFA
+- no external penetration test
+- no email/SMS/push notifications
+- Vite bundle-size advisory
+- private-beta status
+
+Do not hide these limitations.
+
+---
+
+# 32. Release Gate
+
+Before declaring private-beta ready:
+
+npm run lint
+npm run test
+npm run test:e2e
+npm run build
+npm run format:check
+npm run security:check
+git diff --check
+
+Database verification must pass.
+
+Hosted development regression must remain healthy.
+
+Production/private-beta smoke checks must pass.
+
+---
+
+# 33. No Destructive Production Operations
+
+Never:
+
+db reset
+drop production schema
+delete hosted user data
+rewrite migration history
+run destructive fixture cleanup against real users
+
+Forward-only corrections only.
+
+---
+
+# 34. Acceptance Criteria
+
+TASK-026 is complete only when:
+
+- [ ] Frontend is deployed over HTTPS.
+- [ ] Backend is deployed over HTTPS.
+- [ ] Frontend communicates with backend.
+- [ ] Production CORS is correct.
+- [ ] Production environment variables configured securely.
+- [ ] No backend secret exposed to frontend.
+- [ ] Supabase production/private-beta project is configured.
+- [ ] All migrations applied forward-only.
+- [ ] Database verification passes.
+- [ ] RLS/grants remain correct.
+- [ ] Private Storage remains private.
+- [ ] Production Auth URLs work.
+- [ ] Login/session flow works.
+- [ ] Password reset callback works or is verified.
+- [ ] Health endpoint works.
+- [ ] ADMIN access works.
+- [ ] Normal tenant/landlord access works.
+- [ ] Production errors are sanitized.
+- [ ] Production logging remains safe.
+- [ ] Process-local rate-limit deployment limitation documented.
+- [ ] Security check passes.
+- [ ] E2E suite remains passing in QA environment.
+- [ ] Production smoke tests pass.
+- [ ] Rollback process documented.
+- [ ] Operational checklist documented.
+- [ ] Known beta limitations documented.
+- [ ] No destructive production database action occurred.
+- [ ] No secrets committed or exposed.
+- [ ] Release commit/tag identified.
+
+---
+
+# 35. Completion Report
+
+Report:
+
+## Summary
+
+## Deployment Architecture
+
+## Frontend Deployment
+
+Include deployed environment/domain but no secrets.
+
+## Backend Deployment
+
+Include deployed environment/domain but no secrets.
+
+## Supabase Environment
+
+Explain migration/Auth/Storage configuration.
+
+## Environment Variables
+
+List names only.
+
+Do not report values.
+
+## CORS
+
+## Authentication Smoke
+
+## Production Smoke Tests
+
+## Database Verification
+
+## Security Gate
+
+## Operational Readiness
+
+## Rollback Plan
+
+## Release Tag / Commit
+
+## Known Limitations
+
+## Tests
+
+Unit/integration:
+E2E:
+Hosted QA:
+Production smoke:
+Failed:
+Skipped:
+
+## Final Verification
+
+npm run lint
+npm run test
+npm run test:e2e
+npm run build
+npm run format:check
+npm run security:check
+git diff --check
+
+## Private-Beta Verdict
+
+State one:
+
+READY FOR PRIVATE BETA
+
+or
+
+NOT READY FOR PRIVATE BETA
+
+If not ready, list exact blockers.
 
 Then stop.
-
-Do not begin TASK-018.

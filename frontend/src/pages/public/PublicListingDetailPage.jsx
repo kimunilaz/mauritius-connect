@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { ApiError } from '../../services/apiClient.js';
 import { getPublicListing } from '../../services/listingService.js';
 import { createConversation } from '../../services/conversationService.js';
+import { createReport } from '../../services/reportService.js';
 import {
   getSavedListingStatus,
   removeSavedListing,
@@ -31,6 +32,11 @@ export default function PublicListingDetailPage() {
   const [savedSubmitting, setSavedSubmitting] = useState(false);
   const [conversationSubmitting, setConversationSubmitting] = useState(false);
   const [conversationMessage, setConversationMessage] = useState('');
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState('FRAUD_OR_SCAM');
+  const [reportDetails, setReportDetails] = useState('');
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportMessage, setReportMessage] = useState('');
 
   useEffect(() => {
     const controller = new AbortController();
@@ -127,6 +133,35 @@ export default function PublicListingDetailPage() {
     }
   }
 
+  async function submitReport(event) {
+    event.preventDefault();
+    setReportSubmitting(true);
+    setReportMessage('');
+    try {
+      const result = await createReport(session.access_token, {
+        target_type: 'LISTING',
+        target_id: listingId,
+        reason: reportReason,
+        details: reportDetails,
+      });
+      setReportMessage(
+        result.created
+          ? 'Thanks. Your report was submitted.'
+          : 'This listing is already reported by you.',
+      );
+      setReportOpen(false);
+      setReportDetails('');
+    } catch (error) {
+      setReportMessage(
+        error instanceof ApiError
+          ? error.message
+          : 'The report could not be submitted.',
+      );
+    } finally {
+      setReportSubmitting(false);
+    }
+  }
+
   return (
     <div className="public-page">
       <PublicHeader />
@@ -171,6 +206,19 @@ export default function PublicListingDetailPage() {
                   {publicLocation(listing.property)}
                 </p>
                 <h1>{listing.title}</h1>
+                {listing.landlord_verified ||
+                listing.property_authority_verified ? (
+                  <p className="trust-indicators">
+                    {listing.landlord_verified ? 'Identity reviewed' : null}
+                    {listing.landlord_verified &&
+                    listing.property_authority_verified
+                      ? ' Â· '
+                      : null}
+                    {listing.property_authority_verified
+                      ? 'Property evidence reviewed'
+                      : null}
+                  </p>
+                ) : null}
               </div>
               <p className="public-detail-rent">
                 {formatPublicRent(listing.monthly_rent)}
@@ -238,6 +286,59 @@ export default function PublicListingDetailPage() {
                   </p>
                 ) : null}
               </div>
+            ) : null}
+            {!authLoading &&
+            (profile?.role === 'TENANT' || profile?.role === 'LANDLORD') ? (
+              <section
+                className="report-panel"
+                aria-labelledby="report-listing-title"
+              >
+                <button
+                  type="button"
+                  className="text-button"
+                  onClick={() => setReportOpen((open) => !open)}
+                >
+                  Report listing
+                </button>
+                {reportOpen ? (
+                  <form onSubmit={submitReport}>
+                    <h2 id="report-listing-title">Report listing</h2>
+                    <label htmlFor="listing-report-reason">Reason</label>
+                    <select
+                      id="listing-report-reason"
+                      value={reportReason}
+                      onChange={(event) => setReportReason(event.target.value)}
+                    >
+                      <option value="FRAUD_OR_SCAM">Fraud or scam</option>
+                      <option value="MISLEADING_INFORMATION">
+                        Misleading information
+                      </option>
+                      <option value="INAPPROPRIATE_CONTENT">
+                        Inappropriate content
+                      </option>
+                      <option value="DUPLICATE">Duplicate listing</option>
+                      <option value="OTHER">Other</option>
+                    </select>
+                    <label htmlFor="listing-report-details">
+                      Details (optional)
+                    </label>
+                    <textarea
+                      id="listing-report-details"
+                      maxLength={1000}
+                      value={reportDetails}
+                      onChange={(event) => setReportDetails(event.target.value)}
+                    />
+                    <button type="submit" disabled={reportSubmitting}>
+                      {reportSubmitting ? 'Submitting...' : 'Submit report'}
+                    </button>
+                  </form>
+                ) : null}
+                {reportMessage ? (
+                  <p className="form-message" role="status">
+                    {reportMessage}
+                  </p>
+                ) : null}
+              </section>
             ) : null}
 
             <section aria-labelledby="key-facts-title">

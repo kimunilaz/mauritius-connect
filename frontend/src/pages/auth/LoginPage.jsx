@@ -62,6 +62,7 @@ export default function LoginPage() {
         </p>
       }
     >
+      <h2>Welcome back</h2>
       <form className="auth-form" onSubmit={handleSubmit} noValidate>
         <FormField id="login-email" label="Email">
           <input

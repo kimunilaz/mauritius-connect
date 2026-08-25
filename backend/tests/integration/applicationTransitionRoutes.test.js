@@ -211,7 +211,7 @@ describe('explicit application state actions', () => {
     expect(response.body.data.status).toBe('UNDER_REVIEW');
   });
 
-  it('exposes no generic status, accept, or viewing transition route', async () => {
+  it('exposes no generic status or legacy viewing transition route', async () => {
     const context = createApplicationTransitionTestContext();
     for (const [method, path, token] of [
       [
@@ -226,11 +226,6 @@ describe('explicit application state actions', () => {
       ],
       [
         'post',
-        `/api/v1/landlord/applications/${APPLICATION_IDS.a}/accept`,
-        'landlord-token',
-      ],
-      [
-        'post',
         `/api/v1/landlord/applications/${APPLICATION_IDS.a}/invite-viewing`,
         'landlord-token',
       ],
@@ -241,6 +236,42 @@ describe('explicit application state actions', () => {
       ).send();
       expect(response.status).toBe(404);
     }
+  });
+
+  it('exposes the dedicated landlord acceptance action added by TASK-024', async () => {
+    const calls = [];
+    const context = createApplicationTransitionTestContext({
+      initialStatus: 'VIEWING_COMPLETED',
+      acceptanceService: {
+        async accept(userId, applicationId) {
+          calls.push({ userId, applicationId });
+          return {
+            application_status: 'ACCEPTED',
+            listing_status: 'RENTED',
+            transitioned: true,
+          };
+        },
+      },
+    });
+    const response = await auth(
+      request(context.app).post(
+        `/api/v1/landlord/applications/${APPLICATION_IDS.a}/accept`,
+      ),
+      'landlord-token',
+    ).send();
+
+    expect(response.status).toBe(200);
+    expect(response.body.data).toEqual({
+      application_status: 'ACCEPTED',
+      listing_status: 'RENTED',
+      transitioned: true,
+    });
+    expect(calls).toEqual([
+      {
+        userId: TEST_USERS.landlord,
+        applicationId: APPLICATION_IDS.a,
+      },
+    ]);
   });
 
   it('allows at most one different target racing from the same observed status', async () => {

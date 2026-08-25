@@ -41,7 +41,8 @@ export default function ViewingSection({
   const [form, setForm] = useState({ start_time: '', end_time: '', notes: '' });
 
   async function refresh(signal) {
-    setViewings(await listViewings(accessToken, applicationId, { signal }));
+    const result = await listViewings(accessToken, applicationId, { signal });
+    setViewings(Array.isArray(result) ? result : (result?.data ?? []));
   }
 
   useEffect(() => {

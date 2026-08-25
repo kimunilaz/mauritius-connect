@@ -17,6 +17,17 @@ Apply every `*.sql` file in lexical order:
 6. `202608220001_add_application_submission_transactions.sql`
 7. `202608220002_add_application_state_transition_transaction.sql`
 8. `202608220003_add_viewing_transactions.sql`
+9. `202608220004_add_conversation_transaction.sql`
+10. `202608240001_fix_conversation_transaction_ambiguity.sql`
+11. `202608250001_add_message_transactions.sql`
+12. `202608260001_add_notification_events.sql`
+13. `202608260002_add_reports_moderation.sql`
+14. `202608270001_add_verification_workflow.sql`
+15. `202608280001_add_admin_tools.sql`
+16. `202608290001_add_application_acceptance.sql`
+17. `202608290002_restore_application_notifications.sql`
+18. `202608300001_require_active_listing_for_acceptance.sql`
+19. `202608300002_fix_admin_account_state_ambiguity.sql`
 
 The first migration expects Supabase's `auth.users` table to exist. It links
 `profiles.id` to `auth.users.id` with `ON DELETE RESTRICT`, preserving rental
@@ -48,6 +59,13 @@ partial unique index and the backend-only proposal/transition functions. They
 row-lock the workflow records, recheck ACTIVE actor ownership, make identical
 actions idempotent, and atomically couple the two viewing-related application
 state/history changes. Browser roles cannot execute either function.
+
+The two TASK-025 forward-only regression migrations preserve those security
+boundaries. `202608300001_require_active_listing_for_acceptance.sql` prevents
+acceptance unless the locked listing is ACTIVE. `202608300002_fix_admin_account_state_ambiguity.sql`
+qualifies the profile column used by the suspension transaction so suspension,
+listing pausing, audit logging, and reactivation remain atomic. Neither migration
+adds browser-role function grants or relaxes RLS.
 
 ## Applying migrations
 

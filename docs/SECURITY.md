@@ -99,6 +99,7 @@ The platform should explicitly defend against:
 * unrestricted API consumption
 * account enumeration
 * unauthorized conversation access
+* unauthorized message access and unread-state disclosure
 * unauthorized application access
 * unauthorized property modification
 * privilege escalation to ADMIN
@@ -107,6 +108,19 @@ The platform should explicitly defend against:
 * duplicate acceptance of tenants
 * accidental public exposure of exact addresses
 * unsafe administrative operations
+
+Conversation messages are participant-scoped. The API derives both sender and
+membership from the verified session, returns privacy-safe 404 responses for
+non-participants, exposes no user identifiers or contact fields, and permits
+only trimmed plain-text bodies. Send and read-state mutations execute through
+revoked, service-role-only database transactions; direct browser writes remain
+blocked by RLS.
+
+In-app notifications are likewise recipient-scoped. Database triggers derive
+recipients from application, viewing, conversation, and profile relationships;
+notification source keys prevent duplicate event rows. Notification APIs
+filter every read and mutation by the authenticated profile, and message
+notifications contain no message body.
 
 ---
 
@@ -2056,5 +2070,23 @@ RLS
 +
 Careful data exposure
 ```
+
+## Verification evidence
+
+Verification supports only manual landlord identity and property-authority review. Evidence is stored in the private `verification-evidence` bucket, with server-generated paths, strict PDF/JPEG/PNG/WebP validation, a 10 MB file limit, and image decode/re-encode through the existing metadata-stripping image pipeline. Storage paths and signed evidence URLs are never serialized to public, tenant, listing-search, or conversation responses. Ownership and ADMIN actor identity are backend-derived; verification records and storage remain denied to browser roles. A positive public indicator means evidence was manually reviewed and is not a legal ownership guarantee or fraud guarantee.
+
+## Reports and moderation
+
+Report creation derives the reporter from the verified session and validates listing visibility or message participation in a SECURITY DEFINER transaction. Active duplicate reports are serialized by a database partial unique index. Only active ADMIN profiles can list, inspect, review, resolve, or dismiss reports through explicit API actions; there is no generic status mutation endpoint. Moderation state changes and their `admin_audit_logs` entries commit atomically. Reports, messages, and audit logs are not directly accessible to browser roles, and report responses expose only privacy-safe target context.
+
+## Private-beta deployment boundary
+
+TASK-026 adds fail-closed production configuration: the backend requires one
+exact HTTPS `FRONTEND_URL` plus its Supabase server configuration, and hosted
+Vercel builds require only the three documented browser-safe values. The
+private-beta backend is limited to one Render application instance while rate
+limits remain process-local. Deployment, rollback, incident, and secret-rotation
+procedures are maintained in `docs/DEPLOYMENT.md` and
+`docs/PRIVATE_BETA_CHECKLIST.md`.
 
 —not to hidden buttons in the frontend.

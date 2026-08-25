@@ -47,3 +47,7 @@ export function shortlistApplication(accessToken, applicationId) {
 export function rejectApplication(accessToken, applicationId) {
   return transitionApplication(accessToken, applicationId, 'reject');
 }
+
+export function acceptApplication(accessToken, applicationId) {
+  return transitionApplication(accessToken, applicationId, 'accept');
+}

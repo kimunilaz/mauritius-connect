@@ -22,6 +22,7 @@ export function createApplicationTransitionTestContext({
   listingStatus = 'ACTIVE',
   applicationProfiles,
   applicationOverrides = {},
+  acceptanceService,
 } = {}) {
   const profileContext = createProfileTestContext({
     applicationProfiles: applicationProfiles ?? [
@@ -159,6 +160,7 @@ export function createApplicationTransitionTestContext({
       authService: profileContext.authService,
       profileService: profileContext.profileService,
       applicationTransitionService: transitionService,
+      applicationAcceptanceService: acceptanceService,
     }),
     applicationRecords,
     historyRecords,

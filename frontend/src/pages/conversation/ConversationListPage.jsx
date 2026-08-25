@@ -127,6 +127,19 @@ export default function ConversationListPage() {
                       'Rental no longer available'}
                   </span>
                   <small>Updated {localDate(conversation.updated_at)}</small>
+                  {conversation.last_message ? (
+                    <small>
+                      {conversation.last_message.is_me ? 'You: ' : ''}
+                      {conversation.last_message.body}
+                    </small>
+                  ) : null}
+                  {conversation.unread_count ? (
+                    <small
+                      aria-label={`${conversation.unread_count} unread messages`}
+                    >
+                      {conversation.unread_count} unread
+                    </small>
+                  ) : null}
                 </span>
               </Link>
             </li>

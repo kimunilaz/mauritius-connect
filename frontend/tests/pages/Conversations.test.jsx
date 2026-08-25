@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   activeProfile,
@@ -146,7 +146,7 @@ describe('conversation foundation UX', () => {
     expect(
       await screen.findByRole('heading', { name: 'Lina Owner' }),
     ).toBeVisible();
-    expect(screen.getByText('Conversation ready')).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Messages' })).toBeVisible();
   });
 
   it('does not show tenant conversation creation to a LANDLORD', async () => {
@@ -225,12 +225,14 @@ describe('conversation foundation UX', () => {
     ).toBeVisible();
     expect(screen.getByText('Rental unavailable')).toBeVisible();
     expect(document.body.textContent).not.toMatch(
-      /address|phone|email|unread|send message/i,
+      /address|phone|email|unread/i,
     );
-    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: /send|read/i }),
-    ).not.toBeInTheDocument();
+      screen.getByRole('textbox', { name: 'Message' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Send message' }),
+    ).toBeInTheDocument();
   });
 
   it('handles a privacy-safe conversation 404', async () => {

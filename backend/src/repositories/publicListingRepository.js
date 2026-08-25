@@ -115,7 +115,10 @@ export const publicListingRepository = {
       first + filters.limit - 1,
     );
     if (error) throw new PublicListingRepositoryError();
-    return { listings: data ?? [], total: count ?? 0 };
+    return {
+      listings: await addTrustIndicators(data ?? []),
+      total: count ?? 0,
+    };
   },
 
   async findPublicById(listingId) {
@@ -123,6 +126,48 @@ export const publicListingRepository = {
       .eq('id', listingId)
       .maybeSingle();
     if (error) throw new PublicListingRepositoryError();
-    return data;
+    const enriched = await addTrustIndicators(data ? [data] : []);
+    return enriched[0] ?? null;
   },
 };
+
+async function addTrustIndicators(listings) {
+  if (!listings.length) return listings;
+  const propertyIds = listings.map((item) => item.property.id);
+  const { data: properties } = await getPrivilegedSupabaseClient()
+    .from('properties')
+    .select('id,landlord_id')
+    .in('id', propertyIds);
+  const landlordIds = (properties ?? []).map((item) => item.landlord_id);
+  const { data: landlords } = await getPrivilegedSupabaseClient()
+    .from('landlord_profiles')
+    .select('id,user_id')
+    .in('id', landlordIds);
+  const userIds = (landlords ?? []).map((item) => item.user_id);
+  const { data: records } = await getPrivilegedSupabaseClient()
+    .from('verification_records')
+    .select('subject_type,subject_id,verification_type,status')
+    .eq('status', 'VERIFIED')
+    .in('verification_type', ['LANDLORD_IDENTITY', 'PROPERTY_AUTHORITY'])
+    .or(
+      `and(subject_type.eq.PROPERTY,subject_id.in.(${propertyIds.join(',')})),and(subject_type.eq.USER,subject_id.in.(${userIds.join(',')}))`,
+    );
+  const verified = new Set(
+    (records ?? []).map((item) => `${item.subject_type}:${item.subject_id}`),
+  );
+  return listings.map((listing) => {
+    const property = properties?.find(
+      (item) => item.id === listing.property.id,
+    );
+    const landlord = landlords?.find(
+      (item) => item.id === property?.landlord_id,
+    );
+    return {
+      ...listing,
+      landlord_verified: verified.has(`USER:${landlord?.user_id}`),
+      property_authority_verified: verified.has(
+        `PROPERTY:${listing.property.id}`,
+      ),
+    };
+  });
+}

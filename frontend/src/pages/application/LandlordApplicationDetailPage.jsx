@@ -4,6 +4,7 @@ import ViewingSection from '../../components/application/ViewingSection.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { ApiError } from '../../services/apiClient.js';
 import {
+  acceptApplication,
   getLandlordApplication,
   rejectApplication,
   reviewApplication,
@@ -176,6 +177,23 @@ export default function LandlordApplicationDetailPage() {
               }
             >
               Reject application
+            </button>
+          </div>
+        ) : application.status === 'VIEWING_COMPLETED' ? (
+          <div className="application-review-actions">
+            <button
+              className="primary-button"
+              type="button"
+              disabled={actionPending}
+              onClick={() =>
+                handleAction(
+                  acceptApplication,
+                  'Application accepted and listing marked rented.',
+                  'Accept this application? The listing will be marked rented and competing active applications will be rejected.',
+                )
+              }
+            >
+              Accept application
             </button>
           </div>
         ) : (

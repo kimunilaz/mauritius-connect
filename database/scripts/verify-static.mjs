@@ -45,6 +45,7 @@ const updatedAtTables = [
   'application_answers',
   'viewings',
   'conversations',
+  'reports',
 ];
 
 function normalize(sql) {
@@ -263,6 +264,41 @@ requireSql(
 );
 requireSql(
   migrationSql,
+  'revoke all on function public.create_conversation_transaction(uuid, uuid)',
+  'conversation transaction function is unavailable to browser roles',
+);
+requireSql(
+  migrationSql,
+  'on conflict (listing_id, tenant_user_id, landlord_user_id) do nothing',
+  'conversation creation is idempotent under the unique party key',
+);
+requireSql(
+  migrationSql,
+  'revoke all on function public.send_message_transaction(uuid, uuid, text)',
+  'message transaction function is unavailable to browser roles',
+);
+requireSql(
+  migrationSql,
+  'revoke all on function public.mark_conversation_read_transaction(uuid, uuid)',
+  'read-state transaction function is unavailable to browser roles',
+);
+requireSql(
+  migrationSql,
+  'revoke all on function public.create_viewing_cancel_notification(uuid, uuid)',
+  'viewing notification helper is unavailable to browser roles',
+);
+requireSql(
+  migrationSql,
+  'revoke all on function public.create_report_transaction(uuid, text, uuid, text, text)',
+  'report creation function is unavailable to browser roles',
+);
+requireSql(
+  migrationSql,
+  'revoke all on function public.moderate_report_transaction(uuid, uuid, text, text)',
+  'report moderation function is unavailable to browser roles',
+);
+requireSql(
+  migrationSql,
   'check (end_time is null or end_time > start_time)',
   'viewing time ordering',
 );
@@ -312,6 +348,12 @@ const requiredIndexes = [
   'viewings_one_open_per_application_idx',
   'conversation_participants_user_id_idx',
   'reports_listing_id_idx',
+  'messages_conversation_id_created_at_id_idx',
+  'notifications_source_event_key_idx',
+  'notifications_user_id_created_at_id_idx',
+  'reports_one_active_per_reporter_target_idx',
+  'reports_status_created_at_id_idx',
+  'reports_target_type_created_at_id_idx',
 ];
 
 for (const index of requiredIndexes) {

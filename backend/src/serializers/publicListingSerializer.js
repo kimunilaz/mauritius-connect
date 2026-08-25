@@ -23,6 +23,8 @@ function publicListingBase(listing) {
     pets_allowed: listing.pets_allowed,
     published_at: listing.published_at,
     property: publicProperty(listing.property),
+    landlord_verified: listing.landlord_verified === true,
+    property_authority_verified: listing.property_authority_verified === true,
   };
 }
 

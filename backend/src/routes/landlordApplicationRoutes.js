@@ -17,6 +17,8 @@ import {
 } from '../validators/applicationValidators.js';
 import { validateRequest } from '../validators/validateRequest.js';
 import { proposeViewingSchema } from '../validators/viewingValidators.js';
+import { createApplicationAcceptanceController } from '../controllers/applicationAcceptanceController.js';
+import { applicationAcceptanceService as defaultAcceptanceService } from '../services/applicationAcceptanceService.js';
 
 function landlordMiddleware(authService) {
   return [
@@ -48,12 +50,21 @@ export function createLandlordApplicationRouter(
   service = defaultService,
   transitionService = defaultTransitionService,
   viewingService = defaultViewingService,
+  acceptanceService = defaultAcceptanceService,
 ) {
   const router = Router();
   const controller = createLandlordApplicationController(service);
   const transitionController =
     createApplicationTransitionController(transitionService);
   const viewingController = createViewingController(viewingService);
+  const acceptanceController =
+    createApplicationAcceptanceController(acceptanceService);
+  router.post(
+    '/:applicationId/accept',
+    ...landlordMiddleware(authService),
+    validateRequest(applicationParamsSchema, 'params'),
+    acceptanceController.accept,
+  );
   router.post(
     '/:applicationId/viewings',
     ...landlordMiddleware(authService),

@@ -2,6 +2,7 @@ import { AppError } from '../middleware/AppError.js';
 import { applicationRepository } from '../repositories/applicationRepository.js';
 import { listingRepository } from '../repositories/listingRepository.js';
 import { viewingRepository } from '../repositories/viewingRepository.js';
+import { notificationRepository as defaultNotificationRepository } from '../repositories/notificationRepository.js';
 import { serializeViewing } from '../serializers/viewingSerializer.js';
 import { profileService as defaultProfileService } from './profileService.js';
 
@@ -61,6 +62,7 @@ export function createViewingService({
   listings = listingRepository,
   profiles = defaultProfileService,
   viewings = viewingRepository,
+  notifications = null,
 } = {}) {
   async function authorizeApplication(userId, role, applicationId) {
     if (role === 'TENANT') {
@@ -106,6 +108,13 @@ export function createViewingService({
     );
     const current = await viewings.findById(viewingId);
     if (!current) throw notFound();
+    if (
+      action === 'CANCEL' &&
+      result.outcome === 'TRANSITIONED' &&
+      notifications
+    ) {
+      await notifications.createViewingCancel(viewingId, userId);
+    }
     return {
       viewing: serializeViewing(current),
       transitioned: result.outcome === 'TRANSITIONED',
@@ -171,4 +180,6 @@ export function createViewingService({
   });
 }
 
-export const viewingService = createViewingService();
+export const viewingService = createViewingService({
+  notifications: defaultNotificationRepository,
+});

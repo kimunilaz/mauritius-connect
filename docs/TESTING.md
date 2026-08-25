@@ -1846,3 +1846,66 @@ It is:
 > Can the system preserve correct ownership, security, state, and data integrity even when users intentionally send invalid or malicious requests?
 
 The platform is considered reliable only when both normal behavior and failure behavior are tested.
+
+---
+
+# 91. TASK-025 Playwright E2E and Hosted QA
+
+The deterministic browser suite lives in `e2e/prototype.spec.js` and runs with
+Playwright Chromium. It starts an owned backend on port 3100 and frontend on
+port 5174, uses one serial worker, and does not reuse unrelated development
+servers.
+
+The runner loads ignored local configuration from `backend/.env` and
+`.env.integration`. It requires `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, and
+`SUPABASE_SECRET_KEY`; values must never be printed, copied into reports, or
+committed. No pre-existing user passwords or fixed database identifiers are
+required.
+
+For each run, the suite creates random `task025-` Auth identities for Tenant A,
+Tenant B, a tenant retaining a DRAFT application, Landlord A, Landlord B, and an
+ADMIN. It creates the rental data through browser/API workflows, discovers only
+its own namespace during teardown, deletes only its own records and private
+storage objects, and removes its temporary Auth identities. It never resets or
+assumes an empty hosted database.
+
+Run the browser suite from the repository root:
+
+```bash
+npm run test:e2e
+npm run test:e2e:report
+```
+
+The lifecycle covers property and listing creation, image upload, application
+questions, ADMIN approval, public search/address privacy, saved listings,
+reports, conversations, messages, notifications, three tenant applications,
+DRAFT privacy, application review, every supported viewing outcome, acceptance,
+RENTED privacy, competing rejection, verification evidence/review, account
+suspension/reactivation, cross-role denial, responsive layouts, accessibility
+basics, and loading/error/empty states.
+
+The suite deliberately uses normal API authentication, authorization, CORS,
+rate limiting, database transactions, private storage, and deny-by-default RLS.
+Do not weaken or globally disable those controls for a test run. Normal E2E
+traffic is kept below abuse thresholds.
+
+Hosted regression also includes the feature-specific `*:verify:hosted` scripts
+listed in `package.json`, followed by:
+
+```bash
+npm run supabase:migrations:sync
+npm run db:verify:hosted
+npm run db:verify
+```
+
+Before applying any pending forward migration to a shared development project,
+inspect the migration ledger and obtain the required environment authorization.
+Never use a hosted database reset.
+
+On failure, inspect the Playwright screenshot, video, trace, and
+`error-context.md` under ignored `test-results/`; open the HTML report with
+`npm run test:e2e:report`. Reproduce product defects with a regression assertion,
+fix them without expanding the frozen feature set, rerun the affected case, and
+then rerun the full serial suite. Expected negative-test 401/403/404 responses
+are acceptable; page exceptions, unexpected failed requests, explicit console
+errors, CORS failures, and local 5xx responses are not.

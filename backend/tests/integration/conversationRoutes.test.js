@@ -180,9 +180,12 @@ describe('conversation foundation', () => {
         expect.objectContaining({
           first_name: expect.any(String),
           last_name: expect.any(String),
-          profile_photo_url: expect.anything(),
         }),
       );
+      expect(
+        response.body.data.counterparty.profile_photo_url === null ||
+          typeof response.body.data.counterparty.profile_photo_url === 'string',
+      ).toBe(true);
     }
   });
 
@@ -207,12 +210,9 @@ describe('conversation foundation', () => {
     }
   });
 
-  it('does not expose message, read-state, notification, or acceptance routes', async () => {
+  it('does not expose notification or acceptance routes while messaging is explicit', async () => {
     const context = createConversationTestContext({ conversationExists: true });
     for (const [method, path] of [
-      ['post', `${detailPath}/messages`],
-      ['get', `${detailPath}/messages`],
-      ['post', `${detailPath}/read`],
       ['post', `${detailPath}/notify`],
       ['post', `${detailPath}/accept`],
     ]) {

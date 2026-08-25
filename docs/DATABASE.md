@@ -112,6 +112,17 @@ tenant_preferred_locations   properties
                                                                v
                                                            viewings
 
+Conversations contain only the message container and participant membership
+records in V1. Message bodies are stored as immutable plain text in
+`messages.content`; `conversation_participants.last_read_at` is the sole
+read-state marker. Message writes and read-state changes use backend-only
+`SECURITY DEFINER` transactions, while browser access remains blocked by RLS.
+
+Notifications retain a nullable `source_event_key` for idempotent event
+creation. Application-history, viewing, and message triggers derive the
+recipient and insert notification rows in the originating transaction;
+notification reads and read-state updates remain backend-only.
+
 profiles
    |
    +------ conversations
@@ -1960,3 +1971,7 @@ SECURITY.md
 ```
 
 and documenting any proposed architectural change.
+
+## Reports and moderation triage
+
+`reports` supports only `LISTING` and `MESSAGE` targets. TASK-020 adds target-specific reason validation, `OPEN`/`UNDER_REVIEW`/`RESOLVED`/`DISMISSED` state, a partial unique index preventing duplicate active reports per reporter and target, and backend-only transaction functions for creation and moderation. `admin_audit_logs` records each actual moderation transition through the same transaction. Both tables remain RLS-enabled with no browser policies.

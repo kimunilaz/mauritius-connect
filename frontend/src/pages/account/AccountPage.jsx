@@ -72,6 +72,22 @@ export default function AccountPage() {
             </Link>
           </div>
         ) : null}
+        {profile.role === 'ADMIN' ? (
+          <div className="account-actions">
+            <Link className="primary-link-button" to="/admin/listings">
+              Review listings
+            </Link>
+            <Link className="primary-link-button" to="/admin/users">
+              Manage users
+            </Link>
+            <Link className="primary-link-button" to="/admin/reports">
+              Review reports
+            </Link>
+            <Link className="primary-link-button" to="/admin/verifications">
+              Review verifications
+            </Link>
+          </div>
+        ) : null}
         {message ? (
           <p className="form-message" role="alert">
             {message}

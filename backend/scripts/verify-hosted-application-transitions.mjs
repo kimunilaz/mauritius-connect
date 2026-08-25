@@ -384,7 +384,7 @@ async function run() {
     );
 
     await check(
-      'generic, acceptance, and viewing action routes do not exist',
+      'generic and legacy viewing action routes do not exist',
       async () => {
         const record = await fixture();
         for (const [route, token, method] of [
@@ -394,11 +394,6 @@ async function run() {
             'PATCH',
           ],
           [`/applications/${record.applicationId}/accept`, tenantToken, 'POST'],
-          [
-            `/landlord/applications/${record.applicationId}/accept`,
-            landlordToken,
-            'POST',
-          ],
           [
             `/landlord/applications/${record.applicationId}/invite-viewing`,
             landlordToken,

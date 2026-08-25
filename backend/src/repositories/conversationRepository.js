@@ -13,7 +13,7 @@ const CONVERSATION_PROJECTION = [
   `tenant:profiles!conversations_tenant_user_fk(${COUNTERPARTY_COLUMNS})`,
   `landlord:profiles!conversations_landlord_user_fk(${COUNTERPARTY_COLUMNS})`,
   `listing:listings!inner(${LISTING_CONTEXT})`,
-  'membership:conversation_participants!inner(user_id)',
+  'membership:conversation_participants!inner(user_id,last_read_at)',
 ].join(',');
 
 export class ConversationRepositoryError extends Error {
@@ -26,6 +26,8 @@ export class ConversationRepositoryError extends Error {
 function failure() {
   return new ConversationRepositoryError();
 }
+
+const client = () => getPrivilegedSupabaseClient();
 
 export const conversationRepository = {
   async createForListing(listingId, tenantUserId) {
@@ -50,7 +52,39 @@ export const conversationRepository = {
       .order('id', { ascending: false })
       .range(first, first + limit - 1);
     if (error) throw failure();
-    return { conversations: data ?? [], total: count ?? 0 };
+    const conversations = await Promise.all(
+      (data ?? []).map(async (record) => {
+        const membership = Array.isArray(record.membership)
+          ? record.membership.find(({ user_id }) => user_id === userId)
+          : record.membership;
+        const [latest, unread] = await Promise.all([
+          client()
+            .from('messages')
+            .select('id,sender_user_id,content,created_at')
+            .eq('conversation_id', record.id)
+            .order('created_at', { ascending: false })
+            .order('id', { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+          client()
+            .from('messages')
+            .select('id', { count: 'exact', head: true })
+            .eq('conversation_id', record.id)
+            .neq('sender_user_id', userId)
+            .gt(
+              'created_at',
+              membership?.last_read_at ?? '1970-01-01T00:00:00.000Z',
+            ),
+        ]);
+        if (latest.error || unread.error) throw failure();
+        return {
+          ...record,
+          unread_count: unread.count ?? 0,
+          last_message: latest.data ?? null,
+        };
+      }),
+    );
+    return { conversations, total: count ?? 0 };
   },
 
   async findByIdForParticipant(conversationId, userId) {
@@ -61,6 +95,14 @@ export const conversationRepository = {
       .eq('membership.user_id', userId)
       .maybeSingle();
     if (error) throw failure();
-    return data;
+    if (!data) return data;
+    const membership = Array.isArray(data.membership)
+      ? data.membership.find(({ user_id }) => user_id === userId)
+      : data.membership;
+    return {
+      ...data,
+      membership,
+      last_read_at: membership?.last_read_at ?? null,
+    };
   },
 };

@@ -1268,7 +1268,12 @@ Database/Auth/Storage
 Supabase
 ```
 
-The backend must remain deployable to another Node-compatible provider without major application rewrites.
+TASK-026 selects Render for the controlled private-beta Node backend. The
+service runs exactly one application instance because TASK-023 rate limiting is
+process-local. `render.yaml` is the authoritative topology; horizontal scaling
+requires a later approved shared-limiter design. See `docs/DEPLOYMENT.md` for
+the environment and release procedure. The backend remains deployable to
+another Node-compatible provider without major application rewrites.
 
 ---
 
