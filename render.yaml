@@ -2,7 +2,7 @@ services:
   - type: web
     name: mauritius-connect-api
     runtime: node
-    plan: starter
+    plan: free
     numInstances: 1
     autoDeployTrigger: off
     buildCommand: npm ci && npm run build --workspace backend
