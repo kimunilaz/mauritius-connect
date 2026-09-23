@@ -1,4 +1,4 @@
-import { defineConfig, devices } from '@playwright/test';
+﻿import { defineConfig, devices } from '@playwright/test';
 
 // Isolated UI checks: every Auth/API response is a fixture, with no hosted writes.
 export default defineConfig({
@@ -8,6 +8,7 @@ export default defineConfig({
     'color-system.spec.js',
     'operations.spec.js',
     'agents.spec.js',
+    'public-header.spec.js',
   ],
   outputDir: 'test-results/workspace',
   workers: 1,

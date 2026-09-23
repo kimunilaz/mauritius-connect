@@ -1,0 +1,128 @@
+/* The public navigation switches before its longest authenticated state wraps. */
+.public-header {
+  position: relative;
+  z-index: 20;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+}
+.public-header .public-navigation {
+  flex-wrap: nowrap;
+}
+.public-menu-toggle {
+  display: none;
+}
+@media (max-width: 71.99rem) {
+  .public-header,
+  .marketplace-page .public-header {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem max(1rem, calc((100vw - 75rem) / 2));
+    min-height: 4.25rem;
+  }
+  .public-header .asserta-brand {
+    min-width: 0;
+  }
+  .public-header .asserta-mark {
+    width: 34px;
+    height: 34px;
+  }
+  .public-header .asserta-wordmark {
+    font-size: 1.45rem;
+  }
+  .public-menu-toggle {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-width: 5.5rem;
+    min-height: 44px;
+    border: 1px solid rgb(255 255 255 / 55%);
+    border-radius: 7px;
+    padding: 0.5rem 0.75rem;
+    background: transparent;
+    color: var(--color-surface);
+    font: inherit;
+    font-weight: 650;
+    cursor: pointer;
+  }
+  .public-menu-toggle:hover,
+  .public-menu-toggle[aria-expanded='true'] {
+    background: rgb(255 255 255 / 14%);
+  }
+  .public-menu-toggle:focus-visible {
+    outline: 3px solid var(--color-surface);
+    outline-offset: 3px;
+  }
+  .public-menu-icon {
+    display: grid;
+    gap: 3px;
+  }
+  .public-menu-icon > span {
+    display: block;
+    width: 18px;
+    height: 2px;
+    border-radius: 2px;
+    background: currentColor;
+  }
+  .public-header .public-navigation,
+  .marketplace-page .public-navigation {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 21;
+    box-sizing: border-box;
+    width: 100%;
+    max-height: calc(100dvh - 4.25rem);
+    overflow-y: auto;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 0;
+    padding: 0.5rem max(1rem, calc((100vw - 75rem) / 2)) 0.85rem;
+    background: var(--color-primary);
+    box-shadow: 0 12px 22px rgb(15 42 80 / 20%);
+  }
+  .public-header .public-navigation.is-open,
+  .marketplace-page .public-navigation.is-open {
+    display: flex;
+  }
+  .public-header .public-navigation a,
+  .marketplace-page .public-navigation a {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 44px;
+    justify-content: flex-start;
+    padding: 0.65rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+  }
+  .public-header .public-navigation a:last-child,
+  .marketplace-page .public-navigation a:last-child {
+    width: auto;
+    align-self: flex-start;
+    margin-top: 0.4rem;
+    padding: 0.65rem 1rem;
+  }
+  .public-header .public-navigation a:focus-visible {
+    outline: 2px solid var(--color-surface);
+    outline-offset: -2px;
+  }
+}
+@media (min-width: 72rem) {
+  .public-header {
+    flex-wrap: nowrap;
+  }
+  .public-header .public-navigation {
+    width: auto;
+    flex-wrap: nowrap;
+  }
+}
