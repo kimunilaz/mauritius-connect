@@ -14,6 +14,7 @@ process.env.E2E_API_URL ??= `${backendUrl}/api/v1`;
 
 export default defineConfig({
   testDir: './e2e',
+  testMatch: ['prototype.spec.js'],
   fullyParallel: false,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,

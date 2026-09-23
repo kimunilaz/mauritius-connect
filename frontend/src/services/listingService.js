@@ -29,7 +29,7 @@ export function createListing(accessToken, listing) {
 
 export async function listLandlordListings(
   accessToken,
-  { page = 1, limit = 20, status } = {},
+  { page = 1, limit = 20, status, signal } = {},
 ) {
   const query = new globalThis.URLSearchParams({
     page: String(page),
@@ -38,6 +38,7 @@ export async function listLandlordListings(
   if (status) query.set('status', status);
   const envelope = await apiRequest(`/landlord/listings?${query}`, {
     accessToken,
+    signal,
     returnEnvelope: true,
   });
   return { listings: envelope.data, meta: envelope.meta };

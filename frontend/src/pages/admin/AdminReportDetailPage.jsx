@@ -1,3 +1,4 @@
+import { statusLabel } from '../../utils/status.js';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -67,9 +68,13 @@ export default function AdminReportDetailPage() {
         <article className="management-panel">
           <header className="profile-header">
             <div>
-              <p className="eyebrow">{report.target_type} report</p>
-              <h1>{report.reason}</h1>
-              <p>Status: {report.status}</p>
+              <p className="eyebrow">
+                {statusLabel(report.target_type)} report
+              </p>
+              <h1>{statusLabel(report.reason)}</h1>
+              <p className="status-label" data-status={report.status}>
+                Status: {statusLabel(report.status)}
+              </p>
             </div>
           </header>
           <p>{report.details || 'No reporter details provided.'}</p>
@@ -81,7 +86,7 @@ export default function AdminReportDetailPage() {
                 {report.target.listing.property.district},{' '}
                 {report.target.listing.property.locality}
               </p>
-              <p>Status: {report.target.listing.status}</p>
+              <p>Status: {statusLabel(report.target.listing.status)}</p>
             </section>
           ) : null}
           {report.target?.type === 'MESSAGE' ? (
@@ -103,6 +108,7 @@ export default function AdminReportDetailPage() {
           />
           <div className="public-listing-actions">
             <button
+              className="secondary-button"
               type="button"
               disabled={pending !== null || report.status !== 'OPEN'}
               onClick={() => action('review')}
@@ -115,6 +121,7 @@ export default function AdminReportDetailPage() {
                 pending !== null ||
                 !['OPEN', 'UNDER_REVIEW'].includes(report.status)
               }
+              className="primary-button"
               onClick={() => action('resolve')}
             >
               Resolve
@@ -125,6 +132,7 @@ export default function AdminReportDetailPage() {
                 pending !== null ||
                 !['OPEN', 'UNDER_REVIEW'].includes(report.status)
               }
+              className="secondary-button"
               onClick={() => action('dismiss')}
             >
               Dismiss

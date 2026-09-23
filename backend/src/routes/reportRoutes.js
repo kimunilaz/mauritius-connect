@@ -31,7 +31,7 @@ export function createReportRouter(
   const controller = createReportController(service);
   router.post(
     '/',
-    ...authenticated(authService, 'TENANT', 'LANDLORD'),
+    ...authenticated(authService, 'TENANT', 'LANDLORD', 'AGENT'),
     validateRequest(reportCreateSchema),
     controller.create,
   );

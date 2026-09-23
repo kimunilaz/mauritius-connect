@@ -1,3 +1,4 @@
+import { statusLabel } from '../../utils/status.js';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -102,9 +103,12 @@ export default function AdminReportListPage() {
             <li key={report.id}>
               <Link to={`/admin/reports/${report.id}`}>
                 <strong>
-                  {report.target_type} · {report.reason}
+                  {statusLabel(report.target_type)} ·{' '}
+                  {statusLabel(report.reason)}
                 </strong>
-                <span>{report.status}</span>
+                <span className="status-label" data-status={report.status}>
+                  {statusLabel(report.status)}
+                </span>
                 <small>
                   {report.reporter
                     ? `${report.reporter.first_name} ${report.reporter.last_name}`

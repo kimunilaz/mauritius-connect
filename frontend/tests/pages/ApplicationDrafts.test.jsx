@@ -101,7 +101,7 @@ describe('application draft protected route', () => {
       client: sessionClient(),
     });
     expect(
-      await screen.findByRole('heading', { name: 'Jane Doe' }),
+      await screen.findByRole('heading', { name: 'Portfolio overview' }),
     ).toBeVisible();
     expect(
       screen.queryByRole('heading', { name: 'Rental application' }),

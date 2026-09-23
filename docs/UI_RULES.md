@@ -1,8 +1,19 @@
-# Mauritius Rental Platform — UI and UX Rules
+# Asserta — UI and UX Rules
+
+## TASK-032 current scope
+
+TASK-032: the agent sidebar adds Owners to the shared operational navigation. Agent property creation selects or creates a recorded owner; landlord creation has no selector. Owner context is visible on portfolio rows and Property 360; property, finance and report views support owner filters. Owner detail presents records and activity with responsive actions.
+
+
+## TASK-031 owner experience
+
+Owner sidebar groups Portfolio, Leasing, Operations, Finances, Records and Account. Overview prioritizes real portfolio health, Needs attention and Upcoming. Property 360 is the complete record, with tenancy, leasing, maintenance, rent, finances, inspections, documents, tasks, private notes, physical details and activity. New-owner setup supports occupied and vacant paths. Independent occupancy, advertising and maintenance states must remain distinguishable.
+
+Use compact lists, status text, contextual actions and existing brand colors. No promotional dashboard banner or navigation-card wall. Mobile wraps property rows and scrolls property tabs; sidebar drawer retains keyboard dismissal. Owner private fields are labelled. Tenant My home offers only tenancy-relevant operations; do not display owner financial or inspection controls.
 
 ## 1. Purpose
 
-This document defines the user interface and user experience rules for the Mauritius Rental Platform.
+This document defines the user interface and user experience rules for the Asserta.
 
 Codex must use these rules when building frontend functionality.
 
@@ -332,6 +343,8 @@ It is an internal tool, not a marketing interface.
 ---
 
 # 15. Home Page
+
+TASK-030 supersedes the tenant-first hero recommendation below: lead with property-owner tools and the rental workflow, then show the real marketplace preview and tenant pathway. Follow [BRAND.md](BRAND.md) for the Asserta identity and current messaging. Authenticated overviews remain operational, per TASK-029.
 
 The homepage should quickly communicate:
 

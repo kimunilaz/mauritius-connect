@@ -2,7 +2,7 @@
   "name": "mauritius-rental-platform",
   "version": "0.1.0",
   "private": true,
-  "description": "Mauritius Rental Platform workspace",
+  "description": "Asserta rental workflow workspace",
   "engines": {
     "node": ">=24 <25"
   },
@@ -11,6 +11,12 @@
     "backend"
   ],
   "scripts": {
+    "demo:images": "node scripts/download-demo-images.mjs",
+    "demo:seed": "node scripts/seed-marketplace.mjs create",
+    "demo:refresh": "node scripts/seed-marketplace.mjs refresh",
+    "demo:remove": "node scripts/seed-marketplace.mjs remove",
+    "demo:verify": "node scripts/seed-marketplace.mjs verify",
+    "demo:test": "node database/tests/marketplace-seed.test.mjs",
     "dev": "concurrently -n frontend,backend -c cyan,green \"npm run dev --workspace frontend\" \"npm run dev --workspace backend\"",
     "lint": "npm run lint --workspace frontend && npm run lint --workspace backend",
     "test": "npm run test --workspace frontend && npm run test --workspace backend && npm run db:verify",
@@ -37,7 +43,7 @@
     "notifications:verify:hosted": "node backend/scripts/verify-hosted-notifications.mjs",
     "reports:verify:hosted": "node backend/scripts/verify-hosted-reports.mjs",
     "verifications:verify:hosted": "node backend/scripts/verify-hosted-verifications.mjs",
-    "db:verify": "node database/scripts/verify-static.mjs && node database/tests/migrations.test.mjs",
+    "db:verify": "node database/scripts/verify-static.mjs && node database/tests/migrations.test.mjs && node database/tests/operations.test.mjs && node database/tests/operations.test.mjs --agent && node database/tests/agents.test.mjs",
     "db:verify:hosted": "node database/scripts/verify-hosted.mjs",
     "supabase:migrations:sync": "node database/scripts/sync-supabase-migrations.mjs",
     "format": "prettier --write .",
@@ -45,7 +51,10 @@
     "security:check": "node scripts/security-check.mjs && npm audit --audit-level=high",
     "deployment:check": "node scripts/verify-deployment-config.mjs",
     "test:e2e": "playwright test",
-    "test:e2e:report": "playwright show-report"
+    "test:e2e:workspace": "playwright test --config playwright.workspace.config.js",
+    "test:e2e:report": "playwright show-report",
+    "operations:storage:setup": "node backend/scripts/setup-operations-storage.mjs",
+    "operations:verify:readonly": "node backend/scripts/verify-operations-readonly.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.5",

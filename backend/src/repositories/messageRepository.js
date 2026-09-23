@@ -22,6 +22,8 @@ export const messageRepository = {
       p_sender_user_id: senderUserId,
       p_content: content,
     });
+    if (error?.message?.includes('OPERATION_NOT_FOUND'))
+      return { outcome: 'NOT_FOUND' };
     if (error) throw failure();
     return Array.isArray(data) ? data[0] : data;
   },

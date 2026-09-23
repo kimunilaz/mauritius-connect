@@ -1,4 +1,19 @@
-# Mauritius Rental Platform — Database Design
+# Asserta — Database Design
+
+## TASK-032 current scope
+
+TASK-032 forward migrations add AGENT, property_manager_profiles, managed_property_owners, property manager/owner references, shared manager transaction replacements and the private owner directory. Existing landlord_id values remain intact. A composite FK, immutable assignment and archive lock prevent cross-agent attachment or owner transfer. Both new tables deny browser access; RPCs are service-only. The inventory is 33 tables, 33 PKs and 67 FKs.
+
+
+## TASK-031 schema extension (pending hosted deployment)
+
+The four `202609220001` through `202609220004` forward migrations add 10 tables (31 total), tenancy conversation context and aggregate RPCs. Tables: `property_operational_details`, `tenancies`, `rent_ledger_entries`, `rent_receipts`, `maintenance_requests`, `maintenance_updates`, `property_inspections`, `property_documents`, `property_financial_records`, `property_tasks`.
+
+Every domain has a property FK. Composite foreign keys bind tenancy/document/inspection/maintenance links to the same property. Tenancy/application and charge/tenancy-month uniqueness, a one-current-tenancy index, property locks and nonoverlapping live date ranges protect occupancy. Version fields provide optimistic updates. Paid charges cannot be rewritten or waived; receipt RPC row locks and request keys prevent over-recording and retry duplication. Completed maintenance links to at most one financial record.
+
+Tenancy states: UPCOMING, ACTIVE, ENDING, ENDED, CANCELLED. Dates must be supplied, and status transitions are explicit owner actions. Ended/cancelled tenancies cannot reopen. Expired dates revoke tenant access even before manual status cleanup. Occupancy is calculated from current eligible tenancy; listing state stays independent. Each existing property is one rentable asset, with a future parent-building grouping possible without changing these references.
+
+All tables use deny-by-default RLS and backend service-role access. Functions have empty search_path and revoked browser execution. No hosted reset is permitted. [Implementation plan](TASK_031_PLAN.md) records the pre-migration domain/privacy review.
 
 ## 1. Database Objective
 

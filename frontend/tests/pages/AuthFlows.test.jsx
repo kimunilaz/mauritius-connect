@@ -85,7 +85,7 @@ describe('registration and login', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
 
     expect(
-      await screen.findByRole('heading', { name: 'Jane Doe' }),
+      await screen.findByRole('heading', { name: 'Welcome back, Jane' }),
     ).toBeInTheDocument();
     expect(fetch).toHaveBeenCalledWith(
       'http://localhost:3000/api/v1/auth/me',
@@ -194,7 +194,7 @@ describe('recovery flows', () => {
       });
     });
     expect(
-      await screen.findByRole('heading', { name: 'Jane Doe' }),
+      await screen.findByRole('heading', { name: 'Welcome back, Jane' }),
     ).toBeInTheDocument();
   });
 });
@@ -229,7 +229,9 @@ describe('onboarding and protected routes', () => {
     renderApp({ route: '/onboarding', client });
 
     expect(await screen.findByLabelText('Tenant')).toBeInTheDocument();
-    expect(screen.getByLabelText('Landlord')).toBeInTheDocument();
+    expect(
+      screen.getByLabelText('I manage my own properties'),
+    ).toBeInTheDocument();
     expect(screen.queryByLabelText('Admin')).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText('First name'), {
@@ -241,7 +243,7 @@ describe('onboarding and protected routes', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     expect(
-      await screen.findByRole('heading', { name: 'Jane Doe' }),
+      await screen.findByRole('heading', { name: 'Welcome back, Jane' }),
     ).toBeInTheDocument();
     const registrationCall = fetchMock.mock.calls.find(([url]) =>
       url.endsWith('/auth/register-profile'),
@@ -263,7 +265,7 @@ describe('onboarding and protected routes', () => {
     renderApp({ route: '/account', client });
 
     expect(
-      await screen.findByRole('heading', { name: 'Jane Doe' }),
+      await screen.findByRole('heading', { name: 'Welcome back, Jane' }),
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Log out' }));
 

@@ -48,7 +48,7 @@ export function createApp({
   );
   app.use('/api/v1', (request, response, next) => {
     const highRisk =
-      /\/messages|\/reports$|\/conversation$|\/applications$|\/submit$|\/evidence$|\/images$|\/publish$|\/admin\//.test(
+      /\/messages|\/reports$|\/conversation$|\/applications$|\/submit$|\/evidence$|\/operations\/.*(?:upload|claim|invitation|receipts)$|\/images$|\/publish$|\/admin\//.test(
         request.path,
       ) && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method);
     return highRisk ? sensitiveRateLimiter(request, response, next) : next();

@@ -6,6 +6,7 @@ import {
   useSearchParams,
 } from 'react-router-dom';
 import PropertyForm from '../../components/property/PropertyForm.jsx';
+import RentalJourney from '../../components/property/RentalJourney.jsx';
 import PropertyImageManager from '../../components/property/PropertyImageManager.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { ApiError } from '../../services/apiClient.js';
@@ -137,6 +138,20 @@ export default function PropertyDetailPage() {
         </div>
         <Link to="/landlord/properties">Back to properties</Link>
       </header>
+      {!property.archived_at ? (
+        <>
+          {' '}
+          <Link to={`/owner/properties/${propertyId}`}>Open Property 360</Link>
+          <p>
+            Already occupied?{' '}
+            <Link to={`/owner/properties/${propertyId}?tab=tenancies`}>
+              Add existing tenancy
+            </Link>
+            . Keep rent, maintenance and documents in the property record.
+          </p>
+          <RentalJourney step={1} propertyId={propertyId} />{' '}
+        </>
+      ) : null}
       {message ? (
         <p className="form-message" role="status">
           {message}
@@ -154,7 +169,10 @@ export default function PropertyDetailPage() {
         <>
           <section className="property-detail">
             <p>
-              <strong>
+              <strong
+                className="status-label"
+                data-status={property.verification_status}
+              >
                 Property verification: {enumLabel(property.verification_status)}
               </strong>
             </p>

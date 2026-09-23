@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderApp } from '../helpers/authTestUtils.jsx';
 
@@ -8,7 +8,7 @@ describe('application bootstrap', () => {
       'fetch',
       vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({ success: true, data: { status: 'ok' } }),
+        json: async () => ({ success: true, data: [], meta: { total: 0 } }),
       }),
     );
   });
@@ -17,16 +17,43 @@ describe('application bootstrap', () => {
     vi.unstubAllGlobals();
   });
 
-  it('renders the platform bootstrap page and confirms the API connection', async () => {
+  it('offers a rental search and separate tenant and landlord journeys', async () => {
     renderApp();
 
     expect(
-      screen.getByRole('heading', { name: 'Mauritius Rental Platform' }),
+      screen.getByRole('heading', {
+        name: 'Find a place to rent in Mauritius',
+      }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText('Platform foundation is running.'),
+      screen.getByRole('heading', {
+        name: 'Manage your properties with Asserta',
+      }),
     ).toBeInTheDocument();
-    expect(await screen.findByText('API connected')).toBeInTheDocument();
+    expect(screen.getByLabelText('Location')).toBeInTheDocument();
+    expect(
+      screen.queryByText('Platform foundation is running.'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('passes the homepage locality into rental search', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true,
+          data: [],
+          meta: { page: 1, total: 0, total_pages: 0 },
+        }),
+      }),
+    );
+    renderApp();
+    fireEvent.change(screen.getByLabelText('Location'), {
+      target: { value: 'Moka' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Search rentals/ }));
+    expect(await screen.findByDisplayValue('Moka')).toBeInTheDocument();
   });
 
   it('renders the not-found fallback for an unknown route', () => {

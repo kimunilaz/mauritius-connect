@@ -15,6 +15,8 @@ const expectedTables = [
   'tenant_profiles',
   'tenant_preferred_locations',
   'landlord_profiles',
+  'property_manager_profiles',
+  'managed_property_owners',
   'properties',
   'property_images',
   'listings',
@@ -32,6 +34,16 @@ const expectedTables = [
   'reports',
   'verification_records',
   'admin_audit_logs',
+  'property_operational_details',
+  'tenancies',
+  'rent_ledger_entries',
+  'rent_receipts',
+  'maintenance_requests',
+  'maintenance_updates',
+  'property_inspections',
+  'property_documents',
+  'property_financial_records',
+  'property_tasks',
 ];
 
 const db = new PGlite();
@@ -92,8 +104,8 @@ try {
       where table_schema = 'public'
     `);
     assert.deepEqual(result.rows[0], {
-      primary_keys: 21,
-      foreign_keys: 35,
+      primary_keys: 33,
+      foreign_keys: 67,
     });
   });
 

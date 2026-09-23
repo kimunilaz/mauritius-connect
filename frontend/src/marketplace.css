@@ -1,0 +1,224 @@
+.marketplace-main,
+.marketplace-footer {
+  width: min(calc(100% - 2rem), 75rem);
+  margin: 0 auto;
+}
+.marketplace-page .public-header {
+  width: 100%;
+}
+.marketplace-search {
+  padding: 1.8rem 0 1rem;
+}
+.rental-search-shell {
+  padding-top: 0;
+}
+.marketplace-search h1 {
+  font-size: clamp(1.5rem, 3vw, 2.15rem);
+  margin: 0 0 1.25rem;
+  letter-spacing: -0.035em;
+}
+.marketplace-search form {
+  display: grid;
+  grid-template-columns: 2fr 1.4fr 0.8fr auto;
+  gap: 1rem;
+  align-items: end;
+  padding: 1.15rem;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-surface);
+  box-shadow: 0 5px 20px rgb(var(--color-shadow-rgb) / 3%);
+}
+.marketplace-search label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+.marketplace-search input,
+.marketplace-search select {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.6rem;
+  border: 1px solid var(--color-control-border);
+  border-radius: 7px;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+.marketplace-search > p {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  margin: 1rem 0 0;
+}
+.marketplace-section {
+  padding: 1.4rem 0 1.8rem;
+  border-bottom: 1px solid var(--color-border);
+}
+.marketplace-section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: 1.1rem;
+}
+.marketplace-page h2 {
+  font-size: 1.35rem;
+  margin: 0 0 1rem;
+}
+.marketplace-section-heading h2 {
+  margin: 0;
+}
+.marketplace-section-heading > a {
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+.marketplace-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1.2rem;
+}
+.marketplace-grid .public-listing-card-body {
+  padding: 0.9rem;
+}
+.marketplace-grid .public-listing-card-body h3 {
+  font-size: 1rem;
+  line-height: 1.4;
+  margin: 0.4rem 0;
+}
+.marketplace-grid h3 a {
+  color: var(--color-text);
+  text-decoration: none;
+}
+.marketplace-grid h3 a:hover {
+  text-decoration: underline;
+}
+.marketplace-grid .public-listing-card-body p {
+  font-size: 0.82rem;
+}
+.marketplace-grid .public-listing-card-body .public-listing-rent {
+  font-size: 1.05rem;
+}
+.marketplace-areas {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.8rem;
+}
+.marketplace-areas a {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  text-decoration: none;
+  font-weight: 650;
+  font-size: 0.9rem;
+  background: var(--color-surface);
+}
+.marketplace-areas a:hover {
+  border-color: var(--color-primary);
+}
+.marketplace-explanation {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  padding: 2rem 0;
+}
+.marketplace-explanation ol {
+  padding-left: 1.3rem;
+  line-height: 2;
+  color: var(--color-text-muted);
+}
+.marketplace-landlord {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+}
+.marketplace-landlord p {
+  margin-bottom: 0;
+  color: var(--color-text-muted);
+}
+.marketplace-landlord > a {
+  white-space: nowrap;
+}
+.marketplace-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem 0;
+}
+.marketplace-footer nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: 0.85rem;
+}
+@media (max-width: 63.99rem) {
+  .marketplace-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .marketplace-areas {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .marketplace-search form {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 39.99rem) {
+  .marketplace-page .public-header {
+    padding: 12px 16px;
+    gap: 6px;
+  }
+  .marketplace-page .public-navigation {
+    display: flex;
+    gap: 10px;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .marketplace-page .public-navigation a {
+    font-size: 0.68rem;
+  }
+  .marketplace-page .public-navigation a:last-child {
+    padding: 8px;
+  }
+  .marketplace-search label {
+    font-size: 0.72rem;
+  }
+  .marketplace-search {
+    padding-top: 1rem;
+  }
+  .marketplace-search form {
+    gap: 0.7rem;
+    padding: 0.8rem;
+  }
+  .marketplace-search form > div:first-child,
+  .marketplace-search button {
+    grid-column: 1 / -1;
+  }
+  .marketplace-search > p {
+    display: none;
+  }
+  .marketplace-grid {
+    grid-template-columns: 1fr;
+  }
+  .marketplace-areas {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .marketplace-page h2 {
+    font-size: 1.15rem;
+  }
+  .marketplace-explanation {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+  .marketplace-landlord,
+  .marketplace-footer {
+    align-items: start;
+    flex-direction: column;
+  }
+}

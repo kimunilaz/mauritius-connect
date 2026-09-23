@@ -17,12 +17,7 @@ export const PUBLIC_PROPERTY_TYPES = [
   'OTHER',
 ];
 
-export function listingStatusLabel(status) {
-  return status
-    .toLowerCase()
-    .replaceAll('_', ' ')
-    .replace(/^./, (letter) => letter.toUpperCase());
-}
+export { statusLabel as listingStatusLabel } from './status.js';
 
 const mur = new Intl.NumberFormat('en-MU', { maximumFractionDigits: 2 });
 

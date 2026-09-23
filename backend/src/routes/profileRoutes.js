@@ -20,7 +20,7 @@ function securedRouter(role, authService) {
     createAuthenticateUser(authService),
     createLoadApplicationProfile(authService),
     requireActiveAccount,
-    requireRole(role),
+    requireRole(...(role === 'LANDLORD' ? ['LANDLORD', 'AGENT'] : [role])),
   );
   return router;
 }
@@ -79,7 +79,7 @@ export function createBaseProfileRouter(
     createAuthenticateUser(authService),
     createLoadApplicationProfile(authService),
     requireActiveAccount,
-    requireRole('TENANT', 'LANDLORD'),
+    requireRole('TENANT', 'LANDLORD', 'AGENT'),
     validateRequest(baseProfilePatchSchema),
     controller.updateBaseProfile,
   );

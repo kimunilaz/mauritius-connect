@@ -39,7 +39,7 @@ export function createLandlordApplicationService({
   profiles = profileService,
 } = {}) {
   async function ownedListing(userId, listingId) {
-    const landlord = await profiles.ensureLandlordProfile(userId);
+    const landlord = await profiles.ensurePropertyManager(userId);
     const listing = await listings.findByIdForLandlord(listingId, landlord.id);
     if (!listing) throw listingNotFound();
     return listing;
@@ -72,7 +72,7 @@ export function createLandlordApplicationService({
     },
 
     async get(userId, applicationId) {
-      const landlord = await profiles.ensureLandlordProfile(userId);
+      const landlord = await profiles.ensurePropertyManager(userId);
       const application = await applications.findVisibleById(applicationId);
       if (!application) throw applicationNotFound();
       const listing = await listings.findByIdForLandlord(

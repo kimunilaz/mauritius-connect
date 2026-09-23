@@ -1,0 +1,31 @@
+/* TASK-027: the single source of application colors. Status hues are not accents. */
+:root {
+  --color-primary: #0a66c2;
+  --color-primary-hover: #004182;
+  --color-primary-active: #003a70;
+  --color-primary-soft: #e8f3ff;
+  --color-primary-border: #b7d7f5;
+  --color-focus: rgba(10, 102, 194, 0.3);
+  --color-background: #f4f2ee;
+  --color-surface: #ffffff;
+  --color-surface-subtle: #f8f9fa;
+  --color-text: #191919;
+  --color-text-muted: #666666;
+  /* Decorative/disabled content only: insufficient contrast for normal small text. */
+  --color-text-subtle: #8c8c8c;
+  --color-border: #d9d9d9;
+  --color-border-strong: #b5b5b5;
+  /* Form boundaries need stronger contrast than decorative card borders. */
+  --color-control-border: var(--color-text-muted);
+  --color-danger: #b42318;
+  --color-danger-soft: #feecec;
+  --color-warning: #b54708;
+  --color-warning-soft: #fff4e5;
+  --color-success: #157a55;
+  --color-success-soft: #e9f7f1;
+  --color-info: var(--color-primary);
+  --color-primary-rgb: 10 102 194;
+  --color-surface-rgb: 255 255 255;
+  --color-shadow-rgb: 0 0 0;
+  color-scheme: light;
+}

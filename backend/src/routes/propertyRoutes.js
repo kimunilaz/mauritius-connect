@@ -28,7 +28,7 @@ function landlordRouter(authService) {
     createAuthenticateUser(authService),
     createLoadApplicationProfile(authService),
     requireActiveAccount,
-    requireRole('LANDLORD'),
+    requireRole('LANDLORD', 'AGENT'),
   );
   return router;
 }

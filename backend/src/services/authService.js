@@ -7,7 +7,7 @@ import {
 } from '../repositories/profileRepository.js';
 
 const userIdSchema = z.uuid();
-const publicProfileRoles = new Set(['TENANT', 'LANDLORD']);
+const publicProfileRoles = new Set(['TENANT', 'LANDLORD', 'AGENT']);
 
 export class InvalidAccessTokenError extends Error {
   constructor() {
@@ -57,7 +57,7 @@ export function createAuthService({
           statusCode: 422,
           code: 'VALIDATION_ERROR',
           message: 'Some fields are invalid.',
-          fields: { role: 'Role must be TENANT or LANDLORD.' },
+          fields: { role: 'Role must be TENANT, LANDLORD or AGENT.' },
         });
       }
 

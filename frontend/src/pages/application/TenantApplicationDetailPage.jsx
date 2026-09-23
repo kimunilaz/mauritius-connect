@@ -120,7 +120,14 @@ export default function TenantApplicationDetailPage() {
             <dl className="application-detail-grid">
               <div>
                 <dt>Status</dt>
-                <dd>{applicationStatusLabel(application.status)}</dd>
+                <dd>
+                  <span
+                    className="status-label"
+                    data-status={application.status}
+                  >
+                    {applicationStatusLabel(application.status)}
+                  </span>
+                </dd>
               </div>
               <div>
                 <dt>Listing availability</dt>

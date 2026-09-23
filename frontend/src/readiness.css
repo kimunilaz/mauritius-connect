@@ -1,0 +1,140 @@
+/* Shared legibility and loading states across marketplace and workspaces. */
+.workspace-nav-link,
+.workspace-breadcrumb,
+.workspace-user,
+.workspace-logout,
+.workspace-menu-button,
+.workspace-marketplace,
+.dashboard-heading > div > p:last-child,
+.dashboard-heading .primary-link-button,
+.dashboard-empty p,
+.dashboard-empty .secondary-button,
+.panel-heading > a,
+.metric-card > div,
+.rental-journey a,
+.rental-journey strong,
+.public-header .public-navigation a,
+.marketplace-page .public-navigation a,
+.marketplace-search label {
+  font-size: var(--font-size-small);
+}
+
+.workspace-label,
+.workspace-tip .eyebrow,
+.workspace-tip p,
+.workspace-footer,
+.workspace-user small,
+.metric-card > small,
+.panel-heading p,
+.panel-heading .eyebrow,
+.rental-journey small {
+  font-size: var(--font-size-caption);
+}
+
+.workspace-logout,
+.workspace-menu-button,
+.public-navigation a {
+  min-height: 44px;
+}
+
+.public-navigation a {
+  display: inline-flex;
+  align-items: center;
+}
+
+.page-loading {
+  display: grid;
+  min-height: 60dvh;
+  padding: 2rem;
+  place-items: center;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.loading-indicator {
+  display: inline-block;
+  width: 2rem;
+  height: 2rem;
+  border: 3px solid var(--color-primary-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: loading-spin 800ms linear infinite;
+}
+
+@keyframes loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.listing-skeleton {
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.listing-skeleton-image {
+  aspect-ratio: 4 / 3;
+  background: var(--color-border);
+}
+
+.listing-skeleton-body {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  min-height: 11rem;
+}
+
+.listing-skeleton-body span {
+  height: 0.875rem;
+  width: 85%;
+  border-radius: var(--radius-sm);
+  background: var(--color-background);
+}
+
+.listing-skeleton-body span:last-child {
+  width: 55%;
+}
+
+@media (max-width: 800px) {
+  .workspace-menu-open .workspace-sidebar {
+    position: fixed;
+    inset: 68px 0 0;
+    z-index: 30;
+    height: calc(100dvh - 68px);
+    overscroll-behavior: contain;
+  }
+
+  .workspace-menu-open .workspace-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 31;
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 1rem;
+  }
+
+  .marketplace-section-heading {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .workspace-breadcrumb {
+    display: none;
+  }
+  .public-header .public-navigation {
+    gap: 0.35rem 0.85rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-indicator {
+    animation: none;
+  }
+}

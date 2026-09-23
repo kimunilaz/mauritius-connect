@@ -1,4 +1,17 @@
-# Mauritius Rental Platform — Security Specification
+# Asserta — Security Specification
+
+## TASK-032 current scope
+
+TASK-032: agent owner contacts/notes and financial context are private. All management access resolves the authenticated manager on the server. Database composite FKs and triggers bind properties to that manager; tenant access still comes from active/upcoming tenancy. Both new tables have deny-by-default RLS and no browser grants. Client records create no Auth identities. Agents can verify PROPERTY_AUTHORITY, while LANDLORD_IDENTITY stays landlord-only.
+
+
+## TASK-031 operations boundaries
+
+New owner APIs require ACTIVE LANDLORD and join records through property -> landlord_profile -> authenticated user. Tenant access derives from an account-linked ACTIVE/UPCOMING/ENDING tenancy whose end dates have not passed; maintenance submission/photos require current occupancy. Manual tenant names/contact never grant access. Accepted-application identity is derived transactionally; invitation hashes are random, single-use and never returned by read endpoints.
+
+Operational tables have RLS enabled with no browser policies, and no anon/authenticated table grants. RPC execute is service_role only. Compound FKs and commit-time triggers recheck related property and current tenancy. Version/row locks guard concurrent edits, receipts, overlap and message writes. Tenant DTO allowlists exclude owner notes, vendors, costs, inspection details, finances and private file metadata. Public serializers retain their existing allowlists.
+
+`property-operations` Storage is private. Auth/role checks precede upload buffering, limits are 10 MiB/one file, generated UUID object paths ignore client paths, images are decoded/re-encoded, and PDFs require signature/end marker. Files download as attachments through authorized 60-second signed URLs. This is content validation, not malware scanning; no scanner or content execution is added. Failed metadata inserts remove their new objects. Archival disables new downloads/sharing while preserving metadata/history; already issued signed URLs expire within 60 seconds. Operations uploads, invitations, claims and receipts use sensitive rate limits.
 
 ## 1. Security Objective
 

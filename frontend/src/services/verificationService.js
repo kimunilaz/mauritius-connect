@@ -1,8 +1,8 @@
 import { apiRequest } from './apiClient.js';
 export const createVerification = (accessToken, body) =>
   apiRequest('/landlord/verifications', { accessToken, method: 'POST', body });
-export const listVerifications = (accessToken, query = '') =>
-  apiRequest(`/landlord/verifications${query}`, { accessToken });
+export const listVerifications = (accessToken, query = '', { signal } = {}) =>
+  apiRequest(`/landlord/verifications${query}`, { accessToken, signal });
 export const uploadVerificationEvidence = (accessToken, id, file) =>
   apiRequest(`/landlord/verifications/${id}/evidence`, {
     accessToken,

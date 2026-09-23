@@ -66,7 +66,7 @@ export default function ConversationListPage() {
           <p className="eyebrow">
             {profile.role === 'TENANT' ? 'Tenant' : 'Landlord'}
           </p>
-          <h1>Conversations</h1>
+          <h1>Messages</h1>
           <p>Rental conversations you participate in.</p>
         </div>
         <Link to={profile.role === 'TENANT' ? '/listings' : '/account'}>
@@ -89,7 +89,7 @@ export default function ConversationListPage() {
         <section className="empty-state">
           <h2>
             {profile.role === 'TENANT'
-              ? 'No conversations yet'
+              ? 'No messages yet'
               : 'No tenant conversations yet'}
           </h2>
           <p>
@@ -123,7 +123,9 @@ export default function ConversationListPage() {
                 <span>
                   <strong>{name(conversation.counterparty)}</strong>
                   <span>
-                    {conversation.listing_context.listing?.title ??
+                    {(conversation.tenancy_context
+                      ? `Tenancy in ${conversation.tenancy_context.locality}`
+                      : conversation.listing_context.listing?.title) ??
                       'Rental no longer available'}
                   </span>
                   <small>Updated {localDate(conversation.updated_at)}</small>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { ApiError } from '../../services/apiClient.js';
 import { listLandlordListings } from '../../services/listingService.js';
@@ -11,9 +11,13 @@ import {
 
 export default function ListingListPage() {
   const { session } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const token = session.access_token;
   const [listings, setListings] = useState([]);
-  const [status, setStatus] = useState('');
+  const requestedStatus = searchParams.get('status');
+  const status = LISTING_STATUSES.includes(requestedStatus)
+    ? requestedStatus
+    : '';
   const [meta, setMeta] = useState({
     page: 1,
     limit: 20,
@@ -57,6 +61,10 @@ export default function ListingListPage() {
         <div>
           <p className="eyebrow">Landlord</p>
           <h1>Your listings</h1>
+          <p className="page-description">
+            From your first draft to your next tenant. Manage each rental in one
+            place.
+          </p>
         </div>
         <Link className="primary-link-button" to="/landlord/listings/new">
           Create listing
@@ -67,7 +75,11 @@ export default function ListingListPage() {
         <select
           id="listing-status-filter"
           value={status}
-          onChange={(event) => setStatus(event.target.value)}
+          onChange={(event) =>
+            setSearchParams(
+              event.target.value ? { status: event.target.value } : {},
+            )
+          }
         >
           <option value="">All statuses</option>
           {LISTING_STATUSES.map((value) => (
@@ -113,7 +125,10 @@ export default function ListingListPage() {
               <div className="listing-cover-placeholder">No cover photo</div>
             )}
             <div className="listing-card-content">
-              <p className="status-label">
+              <p
+                className="status-label listing-badge"
+                data-status={listing.status}
+              >
                 {listingStatusLabel(listing.status)}
               </p>
               <h2>{listing.title}</h2>
@@ -124,6 +139,12 @@ export default function ListingListPage() {
               </p>
               <Link to={`/landlord/listings/${listing.id}`}>
                 Manage listing
+              </Link>
+              <Link
+                className="listing-applicants-link"
+                to={`/landlord/listings/${listing.id}/applications`}
+              >
+                View applicants <span aria-hidden="true">→</span>
               </Link>
             </div>
           </li>

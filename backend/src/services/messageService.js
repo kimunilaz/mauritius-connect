@@ -26,7 +26,18 @@ export function createMessageService({
 
   return Object.freeze({
     async send(userId, conversationId, body) {
-      await requireParticipant(conversationId, userId);
+      const conversation = await requireParticipant(conversationId, userId);
+      if (conversation.tenancy_id) {
+        const t = conversation.tenancy;
+        const today = new Date().toISOString().slice(0, 10);
+        if (
+          !t ||
+          !['ACTIVE', 'UPCOMING', 'ENDING'].includes(t.status) ||
+          (t.end_date && t.end_date < today) ||
+          (t.expected_end_date && t.expected_end_date < today)
+        )
+          throw notFound();
+      }
       const result = await messages.send(conversationId, userId, body);
       if (!result || result.outcome !== 'CREATED' || !result.message_id) {
         throw notFound();

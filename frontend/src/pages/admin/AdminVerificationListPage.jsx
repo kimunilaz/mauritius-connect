@@ -1,3 +1,4 @@
+import { statusLabel } from '../../utils/status.js';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -44,11 +45,14 @@ export default function AdminVerificationListPage() {
         </section>
       ) : null}
       {!loading && !message && items.length > 0 ? (
-        <ul aria-label="Pending verifications">
+        <ul className="notification-list" aria-label="Pending verifications">
           {items.map((item) => (
             <li key={item.id}>
               <Link to={`/admin/verifications/${item.id}`}>
-                {item.type} · {item.status}
+                <strong>{statusLabel(item.type)}</strong>
+                <span className="status-label" data-status={item.status}>
+                  {statusLabel(item.status)}
+                </span>
               </Link>
             </li>
           ))}

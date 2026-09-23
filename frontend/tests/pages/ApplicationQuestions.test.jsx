@@ -316,7 +316,7 @@ describe('landlord application question management', () => {
       client: sessionClient(),
     });
     expect(
-      await screen.findByRole('heading', { name: 'Jane Doe' }),
+      await screen.findByRole('heading', { name: 'Welcome back, Jane' }),
     ).toBeVisible();
     expect(screen.queryByText('Application questions')).not.toBeInTheDocument();
   });

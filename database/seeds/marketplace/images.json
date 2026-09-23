@@ -1,0 +1,350 @@
+{
+  "sources": [
+    {
+      "id": 32478548,
+      "source_url": "https://www.pexels.com/photo/cozy-studio-apartment-in-pretoria-south-africa-32478548/",
+      "download_url": "https://images.pexels.com/photos/32478548/pexels-photo-32478548.jpeg?auto=compress&cs=tinysrgb&w=1200",
+      "provider": "Pexels",
+      "creator": "Alexander F Ungerer",
+      "role": "compact studio",
+      "usage_basis": "Pexels License: free use and modification in websites/apps; no endorsement implied.",
+      "license_url": "https://www.pexels.com/license/",
+      "filename": "pexels-32478548.jpg",
+      "retrieved_at": "2026-09-15"
+    },
+    {
+      "id": 19836830,
+      "source_url": "https://www.pexels.com/photo/sofa-by-window-in-apartment-19836830/",
+      "download_url": "https://images.pexels.com/photos/19836830/pexels-photo-19836830.jpeg?auto=compress&cs=tinysrgb&w=1200",
+      "provider": "Pexels",
+      "creator": "Lisa Anna",
+      "role": "living room",
+      "usage_basis": "Pexels License: free use and modification in websites/apps; no endorsement implied.",
+      "license_url": "https://www.pexels.com/license/",
+      "filename": "pexels-19836830.jpg",
+      "retrieved_at": "2026-09-15"
+    },
+    {
+      "id": 5745940,
+      "source_url": "https://www.pexels.com/photo/sofa-with-cushions-in-apartment-room-5745940/",
+      "download_url": "https://images.pexels.com/photos/5745940/pexels-photo-5745940.jpeg?auto=compress&cs=tinysrgb&w=1200",
+      "provider": "Pexels",
+      "creator": "Ryutaro Tsukata",
+      "role": "living room",
+      "usage_basis": "Pexels License: free use and modification in websites/apps; no endorsement implied.",
+      "license_url": "https://www.pexels.com/license/",
+      "filename": "pexels-5745940.jpg",
+      "retrieved_at": "2026-09-15"
+    },
+    {
+      "id": 33400380,
+      "source_url": "https://www.pexels.com/photo/spacious-empty-room-with-tiled-flooring-and-large-window-33400380/",
+      "download_url": "https://images.pexels.com/photos/33400380/pexels-photo-33400380.jpeg?auto=compress&cs=tinysrgb&w=1200",
+      "provider": "Pexels",
+      "creator": "Alexander F Ungerer",
+      "role": "empty tiled room",
+      "usage_basis": "Pexels License: free use and modification in websites/apps; no endorsement implied.",
+      "license_url": "https://www.pexels.com/license/",
+      "filename": "pexels-33400380.jpg",
+      "retrieved_at": "2026-09-15"
+    },
+    {
+      "id": 8307041,
+      "source_url": "https://www.pexels.com/photo/facade-of-small-house-in-tropical-village-8307041/",
+      "download_url": "https://images.pexels.com/photos/8307041/pexels-photo-8307041.jpeg?auto=compress&cs=tinysrgb&w=1200",
+      "provider": "Pexels",
+      "creator": "Kian Philippe Martos",
+      "role": "small house exterior",
+      "usage_basis": "Pexels License: free use and modification in websites/apps; no endorsement implied.",
+      "license_url": "https://www.pexels.com/license/",
+      "filename": "pexels-8307041.jpg",
+      "retrieved_at": "2026-09-15"
+    },
+    {
+      "id": 6447384,
+      "source_url": "https://www.pexels.com/photo/interior-modern-apartment-with-kitchen-and-bedroom-6447384/",
+      "download_url": "https://images.pexels.com/photos/6447384/pexels-photo-6447384.jpeg?auto=compress&cs=tinysrgb&w=1200",
+      "provider": "Pexels",
+      "creator": "Max Vakhtbovych",
+      "role": "studio kitchen and sleeping area",
+      "usage_basis": "Pexels License: free use and modification in websites/apps; no endorsement implied.",
+      "license_url": "https://www.pexels.com/license/",
+      "filename": "pexels-6447384.jpg",
+      "retrieved_at": "2026-09-15"
+    },
+    {
+      "id": 7173672,
+      "source_url": "https://www.pexels.com/photo/interior-of-living-room-in-apartment-7173672/",
+      "download_url": "https://images.pexels.com/photos/7173672/pexels-photo-7173672.jpeg?auto=compress&cs=tinysrgb&w=1200",
+      "provider": "Pexels",
+      "creator": "Max Vakhtbovych",
+      "role": "living room",
+      "usage_basis": "Pexels License: free use and modification in websites/apps; no endorsement implied.",
+      "license_url": "https://www.pexels.com/license/",
+      "filename": "pexels-7173672.jpg",
+      "retrieved_at": "2026-09-15"
+    },
+    {
+      "id": 6750148,
+      "source_url": "https://www.pexels.com/photo/a-simple-bedroom-6750148/",
+      "download_url": "https://images.pexels.com/photos/6750148/pexels-photo-6750148.jpeg?auto=compress&cs=tinysrgb&w=1200",
+      "provider": "Pexels",
+      "creator": "Rachel Claire",
+      "role": "bedroom",
+      "usage_basis": "Pexels License: free use and modification in websites/apps; no endorsement implied.",
+      "license_url": "https://www.pexels.com/license/",
+      "filename": "pexels-6750148.jpg",
+      "retrieved_at": "2026-09-15"
+    },
+    {
+      "id": 20183354,
+      "source_url": "https://www.pexels.com/photo/palm-tree-and-leaves-near-house-20183354/",
+      "download_url": "https://images.pexels.com/photos/20183354/pexels-photo-20183354.jpeg?auto=compress&cs=tinysrgb&w=1200",
+      "provider": "Pexels",
+      "creator": "Gülru Sude",
+      "role": "residential exterior",
+      "usage_basis": "Pexels License: free use and modification in websites/apps; no endorsement implied.",
+      "license_url": "https://www.pexels.com/license/",
+      "filename": "pexels-20183354.jpg",
+      "retrieved_at": "2026-09-15"
+    },
+    {
+      "id": 7587375,
+      "source_url": "https://www.pexels.com/photo/empty-minimalist-apartment-7587375/",
+      "download_url": "https://images.pexels.com/photos/7587375/pexels-photo-7587375.jpeg?auto=compress&cs=tinysrgb&w=1200",
+      "provider": "Pexels",
+      "creator": "Max Vakhtbovych",
+      "role": "empty room",
+      "usage_basis": "Pexels License: free use and modification in websites/apps; no endorsement implied.",
+      "license_url": "https://www.pexels.com/license/",
+      "filename": "pexels-7587375.jpg",
+      "retrieved_at": "2026-09-15"
+    },
+    {
+      "id": 5524069,
+      "source_url": "https://www.pexels.com/photo/a-minimalist-bedroom-5524069/",
+      "download_url": "https://images.pexels.com/photos/5524069/pexels-photo-5524069.jpeg?auto=compress&cs=tinysrgb&w=1200",
+      "provider": "Pexels",
+      "creator": "Clay Elliot",
+      "role": "bedroom",
+      "usage_basis": "Pexels License: free use and modification in websites/apps; no endorsement implied.",
+      "license_url": "https://www.pexels.com/license/",
+      "filename": "pexels-5524069.jpg",
+      "retrieved_at": "2026-09-15"
+    },
+    {
+      "id": 6373527,
+      "source_url": "https://www.pexels.com/photo/interior-of-simple-apartment-and-white-walls-6373527/",
+      "download_url": "https://images.pexels.com/photos/6373527/pexels-photo-6373527.jpeg?auto=compress&cs=tinysrgb&w=1200",
+      "provider": "Pexels",
+      "creator": "Monstera Production",
+      "role": "interior hallway",
+      "usage_basis": "Pexels License: free use and modification in websites/apps; no endorsement implied.",
+      "license_url": "https://www.pexels.com/license/",
+      "filename": "pexels-6373527.jpg",
+      "retrieved_at": "2026-09-15"
+    },
+    {
+      "id": 7546594,
+      "source_url": "https://www.pexels.com/photo/photo-of-the-sofa-7546594/",
+      "download_url": "https://images.pexels.com/photos/7546594/pexels-photo-7546594.jpeg?auto=compress&cs=tinysrgb&w=1200",
+      "provider": "Pexels",
+      "creator": "Max Vakhtbovych",
+      "role": "living room",
+      "usage_basis": "Pexels License: free use and modification in websites/apps; no endorsement implied.",
+      "license_url": "https://www.pexels.com/license/",
+      "filename": "pexels-7546594.jpg",
+      "retrieved_at": "2026-09-15"
+    },
+    {
+      "id": 6527037,
+      "source_url": "https://www.pexels.com/photo/interior-of-apartment-with-furniture-6527037/",
+      "download_url": "https://images.pexels.com/photos/6527037/pexels-photo-6527037.jpeg?auto=compress&cs=tinysrgb&w=1200",
+      "provider": "Pexels",
+      "creator": "Max Vakhtbovych",
+      "role": "living and dining area",
+      "usage_basis": "Pexels License: free use and modification in websites/apps; no endorsement implied.",
+      "license_url": "https://www.pexels.com/license/",
+      "filename": "pexels-6527037.jpg",
+      "retrieved_at": "2026-09-15"
+    },
+    {
+      "id": 7614543,
+      "source_url": "https://www.pexels.com/photo/a-sofa-in-a-living-room-7614543/",
+      "download_url": "https://images.pexels.com/photos/7614543/pexels-photo-7614543.jpeg?auto=compress&cs=tinysrgb&w=1200",
+      "provider": "Pexels",
+      "creator": "Max Vakhtbovych",
+      "role": "living room",
+      "usage_basis": "Pexels License: free use and modification in websites/apps; no endorsement implied.",
+      "license_url": "https://www.pexels.com/license/",
+      "filename": "pexels-7614543.jpg",
+      "retrieved_at": "2026-09-15"
+    },
+    {
+      "id": 6487938,
+      "source_url": "https://www.pexels.com/photo/studio-interior-with-bed-near-window-and-kitchen-6487938/",
+      "download_url": "https://images.pexels.com/photos/6487938/pexels-photo-6487938.jpeg?auto=compress&cs=tinysrgb&w=1200",
+      "provider": "Pexels",
+      "creator": "Max Vakhtbovych",
+      "role": "sleeping area",
+      "usage_basis": "Pexels License: free use and modification in websites/apps; no endorsement implied.",
+      "license_url": "https://www.pexels.com/license/",
+      "filename": "pexels-6487938.jpg",
+      "retrieved_at": "2026-09-15"
+    },
+    {
+      "id": 8092165,
+      "source_url": "https://www.pexels.com/photo/couch-in-apartment-interior-design-8092165/",
+      "download_url": "https://images.pexels.com/photos/8092165/pexels-photo-8092165.jpeg?auto=compress&cs=tinysrgb&w=1200",
+      "provider": "Pexels",
+      "creator": "Max Vakhtbovych",
+      "role": "living room",
+      "usage_basis": "Pexels License: free use and modification in websites/apps; no endorsement implied.",
+      "license_url": "https://www.pexels.com/license/",
+      "filename": "pexels-8092165.jpg",
+      "retrieved_at": "2026-09-15"
+    },
+    {
+      "id": 7045991,
+      "source_url": "https://www.pexels.com/photo/kitchen-and-bedroom-interior-in-modern-house-7045991/",
+      "download_url": "https://images.pexels.com/photos/7045991/pexels-photo-7045991.jpeg?auto=compress&cs=tinysrgb&w=1200",
+      "provider": "Pexels",
+      "creator": "Max Vakhtbovych",
+      "role": "studio interior",
+      "usage_basis": "Pexels License: free use and modification in websites/apps; no endorsement implied.",
+      "license_url": "https://www.pexels.com/license/",
+      "filename": "pexels-7045991.jpg",
+      "retrieved_at": "2026-09-15"
+    },
+    {
+      "id": 20736805,
+      "source_url": "https://www.pexels.com/photo/interior-of-simple-narrow-kitchen-20736805/",
+      "download_url": "https://images.pexels.com/photos/20736805/pexels-photo-20736805.jpeg?auto=compress&cs=tinysrgb&w=1200",
+      "provider": "Pexels",
+      "creator": "Alexander F Ungerer",
+      "role": "kitchen",
+      "usage_basis": "Pexels License: free use and modification in websites/apps; no endorsement implied.",
+      "license_url": "https://www.pexels.com/license/",
+      "filename": "pexels-20736805.jpg",
+      "retrieved_at": "2026-09-15"
+    },
+    {
+      "id": 19353452,
+      "source_url": "https://www.pexels.com/photo/interior-design-of-small-kitchen-19353452/",
+      "download_url": "https://images.pexels.com/photos/19353452/pexels-photo-19353452.jpeg?auto=compress&cs=tinysrgb&w=1200",
+      "provider": "Pexels",
+      "creator": "Oliver Atherton",
+      "role": "kitchen",
+      "usage_basis": "Pexels License: free use and modification in websites/apps; no endorsement implied.",
+      "license_url": "https://www.pexels.com/license/",
+      "filename": "pexels-19353452.jpg",
+      "retrieved_at": "2026-09-15"
+    },
+    {
+      "id": 20864046,
+      "source_url": "https://www.pexels.com/photo/a-small-bathroom-with-a-toilet-and-a-window-20864046/",
+      "download_url": "https://images.pexels.com/photos/20864046/pexels-photo-20864046.jpeg?auto=compress&cs=tinysrgb&w=1200",
+      "provider": "Pexels",
+      "creator": "Alexander F Ungerer",
+      "role": "bathroom",
+      "usage_basis": "Pexels License: free use and modification in websites/apps; no endorsement implied.",
+      "license_url": "https://www.pexels.com/license/",
+      "filename": "pexels-20864046.jpg",
+      "retrieved_at": "2026-09-15"
+    },
+    {
+      "id": 32964051,
+      "source_url": "https://www.pexels.com/photo/modern-kitchen-with-patterned-backsplash-32964051/",
+      "download_url": "https://images.pexels.com/photos/32964051/pexels-photo-32964051.jpeg?auto=compress&cs=tinysrgb&w=1200",
+      "provider": "Pexels",
+      "creator": "Alexander F Ungerer",
+      "role": "kitchen",
+      "usage_basis": "Pexels License: free use and modification in websites/apps; no endorsement implied.",
+      "license_url": "https://www.pexels.com/license/",
+      "filename": "pexels-32964051.jpg",
+      "retrieved_at": "2026-09-15"
+    }
+  ],
+  "assignments": [
+    {
+      "demo_id": "MC27-01",
+      "images": [32478548, 19353452, 20864046]
+    },
+    {
+      "demo_id": "MC27-02",
+      "images": [19836830, 20736805, 5524069]
+    },
+    {
+      "demo_id": "MC27-03",
+      "images": [5745940, 19353452, 5524069]
+    },
+    {
+      "demo_id": "MC27-04",
+      "images": [33400380, 20736805, 20864046]
+    },
+    {
+      "demo_id": "MC27-05",
+      "images": [8307041, 19353452, 5524069]
+    },
+    {
+      "demo_id": "MC27-06",
+      "images": [6447384, 20736805, 5524069]
+    },
+    {
+      "demo_id": "MC27-07",
+      "images": [7173672, 19353452, 20864046]
+    },
+    {
+      "demo_id": "MC27-08",
+      "images": [6750148, 20736805, 5524069]
+    },
+    {
+      "demo_id": "MC27-09",
+      "images": [20183354, 19353452, 5524069]
+    },
+    {
+      "demo_id": "MC27-10",
+      "images": [7587375, 20736805, 20864046]
+    },
+    {
+      "demo_id": "MC27-11",
+      "images": [5524069, 19353452, 20864046]
+    },
+    {
+      "demo_id": "MC27-12",
+      "images": [6373527, 20736805, 5524069]
+    },
+    {
+      "demo_id": "MC27-13",
+      "images": [7546594, 19353452, 20864046]
+    },
+    {
+      "demo_id": "MC27-14",
+      "images": [6527037, 20736805, 5524069]
+    },
+    {
+      "demo_id": "MC27-15",
+      "images": [7614543, 32964051, 5524069]
+    },
+    {
+      "demo_id": "MC27-16",
+      "images": [6487938, 20736805, 20864046]
+    },
+    {
+      "demo_id": "MC27-17",
+      "images": [8092165, 19353452, 5524069]
+    },
+    {
+      "demo_id": "MC27-18",
+      "images": [7045991, 20736805, 5524069]
+    },
+    {
+      "demo_id": "MC27-19",
+      "images": [20736805, 33400380, 20864046]
+    },
+    {
+      "demo_id": "MC27-20",
+      "images": [19353452, 20736805, 5524069]
+    }
+  ]
+}

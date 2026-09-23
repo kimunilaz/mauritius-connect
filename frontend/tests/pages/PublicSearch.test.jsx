@@ -105,15 +105,14 @@ describe('public rental search', () => {
     renderApp({ route: '/listings' });
     await screen.findByText('1 rental found');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Show filters' }));
-    fireEvent.change(screen.getByLabelText('District'), {
+    fireEvent.change(screen.getByLabelText('Location'), {
       target: { value: 'Moka' },
     });
-    fireEvent.change(screen.getByLabelText('Minimum rent (Rs)'), {
+    fireEvent.change(screen.getByLabelText('Maximum rent · MUR / month'), {
       target: { value: '10000' },
     });
-    fireEvent.change(screen.getByLabelText('Property type'), {
-      target: { value: 'APARTMENT' },
+    fireEvent.change(screen.getByLabelText('Bedrooms'), {
+      target: { value: '2' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Search rentals' }));
 
@@ -121,15 +120,13 @@ describe('public rental search', () => {
       expect(
         fetchMock.mock.calls.some(
           ([url]) =>
-            url.includes('district=Moka') &&
-            url.includes('min_rent=10000') &&
-            url.includes('property_type=APARTMENT'),
+            url.includes('locality=Moka') &&
+            url.includes('max_rent=10000') &&
+            url.includes('bedrooms=2'),
         ),
       ).toBe(true),
     );
-    expect(
-      screen.getByRole('button', { name: 'Show filters' }),
-    ).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByLabelText('District')).not.toBeInTheDocument();
   });
 
   it('updates sorting through the URL-backed request', async () => {
@@ -228,18 +225,20 @@ describe('public rental search', () => {
     expect(screen.getByRole('button', { name: 'Try again' })).toBeEnabled();
   });
 
-  it('provides a touch-friendly collapsible filter control', async () => {
+  it('keeps the three search fields visible and restores homepage query values', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(listResponse()));
-    renderApp({ route: '/listings' });
-    const toggle = screen.getByRole('button', { name: 'Show filters' });
-    expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    fireEvent.click(toggle);
+    renderApp({ route: '/listings?locality=Moka&max_rent=24000&bedrooms=2' });
+    await screen.findByText('1 rental found');
+    const form = screen.getByRole('form', { name: 'Search rentals' });
+    expect(within(form).getByLabelText('Location')).toHaveValue('Moka');
     expect(
-      screen.getByRole('button', { name: 'Hide filters' }),
-    ).toHaveAttribute('aria-expanded', 'true');
-    expect(document.querySelector('#public-search-filters')).toHaveClass(
-      'is-open',
-    );
+      within(form).getByLabelText('Maximum rent · MUR / month'),
+    ).toHaveValue(24000);
+    expect(within(form).getByLabelText('Bedrooms')).toHaveValue('2');
+    expect(form.querySelectorAll('input,select')).toHaveLength(3);
+    expect(
+      screen.queryByRole('button', { name: 'Show filters' }),
+    ).not.toBeInTheDocument();
   });
 });
 

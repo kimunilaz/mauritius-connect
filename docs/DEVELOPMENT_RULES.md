@@ -1,8 +1,17 @@
-# Mauritius Rental Platform — Development Rules
+# Asserta — Development Rules
+
+## TASK-032 current scope
+
+TASK-032: keep one property-management implementation for LANDLORD and AGENT. Preserve landlord_id semantics and old IDs. Scope owner records by manager and never create client Auth users automatically. Agency teams, shared portfolios and owner transfers remain future work.
+
+
+## TASK-031 scope override
+
+The approved current task expands Asserta from leasing software to property operations. Existing leasing-only prohibitions below do not prohibit the explicitly requested tenancy, maintenance, offline rent, inspections, owner documents, simple financial records, tasks or reports. Backend LANDLORD/auth/security/workflow conventions remain. Payment custody/processing, full accounting, legal automation, screening and enterprise team systems remain excluded. No hosted reset or unapproved hosted migration.
 
 ## 1. Purpose
 
-This document defines the engineering rules for the Mauritius Rental Platform.
+This document defines the engineering rules for the Asserta.
 
 Codex is the primary implementation agent for this project.
 

@@ -92,7 +92,7 @@ export default function PublicListingDetailPage() {
       if (saved) {
         await removeSavedListing(session.access_token, listingId);
         setSaved(false);
-        setSavedMessage('Removed from saved rentals.');
+        setSavedMessage('Removed from saved homes.');
       } else {
         await saveListing(session.access_token, listingId);
         setSaved(true);
@@ -288,7 +288,8 @@ export default function PublicListingDetailPage() {
               </div>
             ) : null}
             {!authLoading &&
-            (profile?.role === 'TENANT' || profile?.role === 'LANDLORD') ? (
+            (profile?.role === 'TENANT' ||
+              ['LANDLORD', 'AGENT'].includes(profile?.role)) ? (
               <section
                 className="report-panel"
                 aria-labelledby="report-listing-title"
@@ -328,7 +329,11 @@ export default function PublicListingDetailPage() {
                       value={reportDetails}
                       onChange={(event) => setReportDetails(event.target.value)}
                     />
-                    <button type="submit" disabled={reportSubmitting}>
+                    <button
+                      className="primary-button"
+                      type="submit"
+                      disabled={reportSubmitting}
+                    >
                       {reportSubmitting ? 'Submitting...' : 'Submit report'}
                     </button>
                   </form>

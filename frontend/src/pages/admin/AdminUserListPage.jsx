@@ -1,3 +1,4 @@
+import { statusLabel } from '../../utils/status.js';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -71,7 +72,9 @@ export default function AdminUserListPage() {
           maxLength={100}
           onChange={(event) => setQuery(event.target.value)}
         />
-        <button type="submit">Search users</button>
+        <button className="primary-button" type="submit">
+          Search users
+        </button>
       </form>
       {loading ? <p aria-live="polite">Loading users...</p> : null}
       {message ? (
@@ -93,8 +96,11 @@ export default function AdminUserListPage() {
                 <strong>
                   {item.first_name} {item.last_name}
                 </strong>
-                <span>
-                  {item.role} · {item.account_status}
+                <span
+                  className="status-label"
+                  data-status={item.account_status}
+                >
+                  {statusLabel(item.role)} · {statusLabel(item.account_status)}
                 </span>
               </Link>
             </li>

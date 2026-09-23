@@ -6,13 +6,15 @@ const LISTING_CONTEXT =
 const CONVERSATION_PROJECTION = [
   'id',
   'listing_id',
+  'tenancy_id',
+  'tenancy:tenancies(id,status,start_date,end_date,expected_end_date,property:properties(id,locality))',
   'tenant_user_id',
   'landlord_user_id',
   'created_at',
   'updated_at',
   `tenant:profiles!conversations_tenant_user_fk(${COUNTERPARTY_COLUMNS})`,
   `landlord:profiles!conversations_landlord_user_fk(${COUNTERPARTY_COLUMNS})`,
-  `listing:listings!inner(${LISTING_CONTEXT})`,
+  `listing:listings(${LISTING_CONTEXT})`,
   'membership:conversation_participants!inner(user_id,last_read_at)',
 ].join(',');
 
@@ -53,36 +55,38 @@ export const conversationRepository = {
       .range(first, first + limit - 1);
     if (error) throw failure();
     const conversations = await Promise.all(
-      (data ?? []).map(async (record) => {
-        const membership = Array.isArray(record.membership)
-          ? record.membership.find(({ user_id }) => user_id === userId)
-          : record.membership;
-        const [latest, unread] = await Promise.all([
-          client()
-            .from('messages')
-            .select('id,sender_user_id,content,created_at')
-            .eq('conversation_id', record.id)
-            .order('created_at', { ascending: false })
-            .order('id', { ascending: false })
-            .limit(1)
-            .maybeSingle(),
-          client()
-            .from('messages')
-            .select('id', { count: 'exact', head: true })
-            .eq('conversation_id', record.id)
-            .neq('sender_user_id', userId)
-            .gt(
-              'created_at',
-              membership?.last_read_at ?? '1970-01-01T00:00:00.000Z',
-            ),
-        ]);
-        if (latest.error || unread.error) throw failure();
-        return {
-          ...record,
-          unread_count: unread.count ?? 0,
-          last_message: latest.data ?? null,
-        };
-      }),
+      (data ?? [])
+        .filter((record) => accessibleTenancy(record, userId))
+        .map(async (record) => {
+          const membership = Array.isArray(record.membership)
+            ? record.membership.find(({ user_id }) => user_id === userId)
+            : record.membership;
+          const [latest, unread] = await Promise.all([
+            client()
+              .from('messages')
+              .select('id,sender_user_id,content,created_at')
+              .eq('conversation_id', record.id)
+              .order('created_at', { ascending: false })
+              .order('id', { ascending: false })
+              .limit(1)
+              .maybeSingle(),
+            client()
+              .from('messages')
+              .select('id', { count: 'exact', head: true })
+              .eq('conversation_id', record.id)
+              .neq('sender_user_id', userId)
+              .gt(
+                'created_at',
+                membership?.last_read_at ?? '1970-01-01T00:00:00.000Z',
+              ),
+          ]);
+          if (latest.error || unread.error) throw failure();
+          return {
+            ...record,
+            unread_count: unread.count ?? 0,
+            last_message: latest.data ?? null,
+          };
+        }),
     );
     return { conversations, total: count ?? 0 };
   },
@@ -95,7 +99,7 @@ export const conversationRepository = {
       .eq('membership.user_id', userId)
       .maybeSingle();
     if (error) throw failure();
-    if (!data) return data;
+    if (!data || !accessibleTenancy(data, userId)) return null;
     const membership = Array.isArray(data.membership)
       ? data.membership.find(({ user_id }) => user_id === userId)
       : data.membership;
@@ -106,3 +110,15 @@ export const conversationRepository = {
     };
   },
 };
+
+function accessibleTenancy(record, userId) {
+  if (!record.tenancy_id || record.landlord_user_id === userId) return true;
+  const t = record.tenancy,
+    today = new Date().toISOString().slice(0, 10);
+  return (
+    t &&
+    ['UPCOMING', 'ACTIVE', 'ENDING'].includes(t.status) &&
+    (!t.end_date || t.end_date >= today) &&
+    (!t.expected_end_date || t.expected_end_date >= today)
+  );
+}

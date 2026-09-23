@@ -1,0 +1,161 @@
+.overview-empty {
+  padding: 20px;
+  color: var(--color-text-muted);
+}
+.overview-summary {
+  margin: 8px 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+.tenant-dashboard {
+  max-width: 1440px;
+  width: 100%;
+  margin-inline: auto;
+}
+.tenant-dashboard .dashboard-heading {
+  margin-bottom: 24px;
+}
+.tenant-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.tenant-metric {
+  display: grid;
+  gap: 4px;
+  padding: 18px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+  text-decoration: none;
+  color: var(--color-text);
+}
+.tenant-metric:hover {
+  border-color: var(--color-primary);
+}
+.tenant-metric strong {
+  font-size: clamp(1.2rem, 2vw, 1.8rem);
+  overflow-wrap: anywhere;
+}
+.tenant-metric small,
+.tenant-activity-list p,
+.tenant-activity-list small {
+  color: var(--color-text-muted);
+}
+.tenant-dashboard .dashboard-panel {
+  margin-bottom: 24px;
+}
+.tenant-dashboard .panel-heading {
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 20px;
+}
+.tenant-dashboard .panel-heading h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+.tenant-activity-list,
+.tenant-saved-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.tenant-activity-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+  border-top: 1px solid var(--color-border);
+}
+.tenant-activity-list h3 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+}
+.tenant-activity-list p {
+  margin: 0 0 4px;
+}
+.tenant-activity-list a {
+  padding-block: 10px;
+}
+.tenant-saved-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  padding: 0 20px 20px;
+}
+.tenant-saved-grid > li {
+  min-width: 0;
+}
+.tenant-saved-grid .public-listing-card {
+  height: 100%;
+}
+.tenant-saved-grid .public-listing-card img,
+.tenant-saved-grid .public-image-placeholder {
+  height: 150px;
+  width: 100%;
+  object-fit: cover;
+}
+.tenant-saved-grid .public-listing-card-body {
+  padding: 16px;
+}
+@media (max-width: 1100px) {
+  .tenant-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .tenant-saved-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .tenant-activity-list li {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .tenant-activity-list li > div {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 520px) {
+  .tenant-metrics {
+    gap: 10px;
+  }
+  .tenant-metric {
+    padding: 14px;
+    font-size: 0.85rem;
+  }
+  .tenant-saved-grid {
+    grid-template-columns: 1fr;
+  }
+  .tenant-activity-list li {
+    gap: 10px;
+  }
+}
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+.overview-stack {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+.overview-grid .dashboard-panel {
+  margin-bottom: 0;
+}
+.overview-grid .tenant-activity-list li {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+}
+.overview-grid .tenant-activity-list li > div {
+  grid-column: 1 / -1;
+}
+.overview-grid h3,
+.overview-grid p {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 1100px) {
+  .overview-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -91,6 +91,10 @@ export default function PropertyListPage() {
         <div>
           <p className="eyebrow">Landlord</p>
           <h1>Your properties</h1>
+          <p className="page-description">
+            A home for every property you manage. Keep details and photos ready
+            for the next listing.
+          </p>
         </div>
         <Link className="primary-link-button" to="/landlord/properties/new">
           Add property
@@ -145,6 +149,9 @@ export default function PropertyListPage() {
       <ul className="property-grid">
         {properties.map((property) => (
           <li className="property-card" key={property.id}>
+            <div className="property-record-icon" aria-hidden="true">
+              ⌂
+            </div>
             <p className="eyebrow">{typeLabel(property.property_type)}</p>
             <h2>
               {property.locality}, {property.district}
@@ -171,7 +178,7 @@ export default function PropertyListPage() {
                     Edit
                   </Link>
                   <button
-                    className="text-button"
+                    className="text-button text-button-danger"
                     type="button"
                     onClick={() => archive(property)}
                   >

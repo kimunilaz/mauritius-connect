@@ -22,7 +22,7 @@ export const verificationRepository = {
       .range((page - 1) * limit, page * limit - 1);
     if (!admin) {
       const { data: p } = await db()
-        .from('landlord_profiles')
+        .from('property_manager_profiles')
         .select('id')
         .eq('user_id', userId)
         .single();
@@ -33,7 +33,7 @@ export const verificationRepository = {
               .from('properties')
               .select('id')
               .eq(
-                'landlord_id',
+                'property_manager_id',
                 p?.id ?? '00000000-0000-0000-0000-000000000000',
               )
           ).data
@@ -83,7 +83,7 @@ export const verificationRepository = {
   async ownsProperty(userId, propertyId) {
     const { data } = await db()
       .from('properties')
-      .select('id,landlord:landlord_profiles!inner(user_id)')
+      .select('id,landlord:property_manager_profiles!inner(user_id)')
       .eq('id', propertyId)
       .eq('landlord.user_id', userId)
       .maybeSingle();

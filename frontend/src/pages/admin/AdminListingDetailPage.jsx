@@ -1,3 +1,4 @@
+import { statusLabel } from '../../utils/status.js';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -79,7 +80,9 @@ export default function AdminListingDetailPage() {
         <article className="management-panel">
           <p className="eyebrow">Listing review</p>
           <h1>{item.title}</h1>
-          <p>Status: {item.status}</p>
+          <p className="status-label" data-status={item.status}>
+            Status: {statusLabel(item.status)}
+          </p>
           <p>{item.description}</p>
           {item.status === 'PENDING_REVIEW' ? (
             <>

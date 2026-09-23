@@ -6,7 +6,7 @@ export default function NotFoundPage() {
       <section className="bootstrap-card" aria-labelledby="not-found-title">
         <h1 id="not-found-title">Page not found</h1>
         <p>The requested page does not exist.</p>
-        <Link to="/">Return to the platform foundation</Link>
+        <Link to="/">Return to Asserta</Link>
       </section>
     </main>
   );

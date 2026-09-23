@@ -1,3 +1,4 @@
+import { statusLabel } from '../../utils/status.js';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -72,13 +73,16 @@ export default function AdminVerificationDetailPage() {
       <Link className="public-back-link" to="/admin/verifications">
         Back to verifications
       </Link>
-      <h1>{item.type}</h1>
-      <p>Status: {item.status}</p>
+      <h1>{statusLabel(item.type)}</h1>
+      <p className="status-label" data-status={item.status}>
+        Status: {statusLabel(item.status)}
+      </p>
       {message ? <p role="status">{message}</p> : null}
       <div className="card-actions">
         <button
           type="button"
           disabled={pending || item.status !== 'PENDING'}
+          className="primary-button"
           onClick={() => act('approve')}
         >
           Approve
@@ -86,6 +90,7 @@ export default function AdminVerificationDetailPage() {
         <button
           type="button"
           disabled={pending || item.status !== 'PENDING'}
+          className="danger-button"
           onClick={() => act('reject')}
         >
           Reject

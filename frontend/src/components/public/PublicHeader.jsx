@@ -1,4 +1,6 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import Brand from '../common/Brand.jsx';
+import { isWorkspacePath } from '../common/WorkspaceLayout.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useEffect, useState } from 'react';
 import { getUnreadNotificationCount } from '../../services/notificationService.js';
@@ -7,11 +9,12 @@ export default function PublicHeader() {
   const { isAuthenticated, profile } = useAuth();
   const { session } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
+  const { pathname } = useLocation();
 
   useEffect(() => {
     if (
       !session?.access_token ||
-      !['TENANT', 'LANDLORD'].includes(profile?.role)
+      !['TENANT', 'LANDLORD', 'AGENT'].includes(profile?.role)
     ) {
       setUnreadCount(0);
       return undefined;
@@ -25,17 +28,23 @@ export default function PublicHeader() {
     return () => controller.abort();
   }, [profile?.role, session?.access_token]);
 
+  if (profile && isWorkspacePath(pathname)) return null;
+
   return (
     <header className="public-header">
-      <Link className="public-brand" to="/">
-        Mauritius Connect
-      </Link>
+      <Brand light />
       <nav className="public-navigation" aria-label="Main navigation">
         <Link to="/listings">Browse rentals</Link>
-        {profile?.role === 'TENANT' ? (
-          <Link to="/tenant/saved-listings">Saved rentals</Link>
+        {!isAuthenticated || ['LANDLORD', 'AGENT'].includes(profile?.role) ? (
+          <Link to={isAuthenticated ? '/landlord/properties' : '/register'}>
+            {pathname === '/' ? 'Manage properties' : 'List a property'}
+          </Link>
         ) : null}
-        {profile?.role === 'TENANT' || profile?.role === 'LANDLORD' ? (
+        {profile?.role === 'TENANT' ? (
+          <Link to="/tenant/saved-listings">Saved homes</Link>
+        ) : null}
+        {profile?.role === 'TENANT' ||
+        ['LANDLORD', 'AGENT'].includes(profile?.role) ? (
           <Link to="/conversations">Conversations</Link>
         ) : null}
         {profile?.role === 'ADMIN' ? (
@@ -46,7 +55,8 @@ export default function PublicHeader() {
             <Link to="/admin/verifications">Verifications</Link>
           </>
         ) : null}
-        {profile?.role === 'TENANT' || profile?.role === 'LANDLORD' ? (
+        {profile?.role === 'TENANT' ||
+        ['LANDLORD', 'AGENT'].includes(profile?.role) ? (
           <Link to="/notifications" aria-label="Notifications">
             Notifications{unreadCount ? ` (${unreadCount} unread)` : ''}
           </Link>

@@ -55,7 +55,7 @@ export default function LoginPage() {
   return (
     <AuthLayout
       title="Log in"
-      intro="Use the email and password managed by Supabase Auth."
+      intro="Log in to Asserta to check your properties, applications and messages."
       footer={
         <p>
           Need an account? <Link to="/register">Sign up</Link>

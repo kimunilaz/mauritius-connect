@@ -1,8 +1,21 @@
-# Mauritius Rental Platform — Product Specification
+# Asserta — Product Specification
+
+## TASK-032 current scope
+
+TASK-032 current scope: LANDLORD manages self-owned property; AGENT manages property for recorded client owners. Both use the same property operations and leasing workspace. An agent-created owner is a private business record, not an Auth user. Existing landlords need no client record. Teams, commissions, fees, payouts and owner portals are deferred.
+
+
+## Current scope: TASK-031 property operations
+
+Asserta is property-management software for property owners and property agencies in Mauritius. The property is the central operational record; leasing is one part of its lifecycle. Owners can manage already occupied properties without a listing or application, record tenancies and offline rent, track maintenance, inspections, private documents, income/expenses and tasks, and review portfolio reports. Tenants retain discovery and applications, with tenancy-derived My home access for current/upcoming rentals.
+
+This scope supersedes historical leasing-only exclusions below. Asserta never acts as the property manager, intermediary or custodian of money. No payments, accounting, screening, signatures or enterprise agency permissions are introduced. See [TASK_031_REPORT.md](TASK_031_REPORT.md) and [TASK_031_PLAN.md](TASK_031_PLAN.md).
 
 ## 1. Product Summary
 
-The Mauritius Rental Platform is a web-based rental application and process management platform for landlords and tenants in Mauritius.
+The master brand is Asserta. Initial public positioning is property-owner-first: Asserta helps property owners manage the journey from listing a property to finding and managing the right tenant. This means the existing rental workflow tools, not a managed-property service. Tenant discovery and applications remain supported. See [BRAND.md](BRAND.md).
+
+The Asserta is a web-based rental application and process management platform for landlords and tenants in Mauritius.
 
 The platform allows landlords to publish rental properties, receive structured rental applications, review applicants, schedule viewings, and communicate with prospective tenants.
 

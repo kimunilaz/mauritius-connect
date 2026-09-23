@@ -24,7 +24,7 @@ function base(auth, role) {
     createAuthenticateUser(auth),
     createLoadApplicationProfile(auth),
     requireActiveAccount,
-    requireRole(role),
+    requireRole(...(role === 'LANDLORD' ? ['LANDLORD', 'AGENT'] : [role])),
   );
   return r;
 }

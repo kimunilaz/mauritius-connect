@@ -18,8 +18,8 @@ const optionalPhone = z
 
 export const registerProfileSchema = z
   .object({
-    role: z.enum(['TENANT', 'LANDLORD'], {
-      error: 'Role must be TENANT or LANDLORD.',
+    role: z.enum(['TENANT', 'LANDLORD', 'AGENT'], {
+      error: 'Role must be TENANT, LANDLORD or AGENT.',
     }),
     first_name: requiredName,
     last_name: requiredName,

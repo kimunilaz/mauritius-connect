@@ -35,6 +35,7 @@ function safeProperty(property) {
 function safeListing(listing) {
   return {
     id: listing.id,
+    property_id: listing.property_id,
     title: listing.title,
     status: listing.status,
     property: safeProperty(listing.property),

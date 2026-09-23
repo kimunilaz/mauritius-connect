@@ -19,7 +19,7 @@ function localDate(value) {
 
 export default function ConversationDetailPage() {
   const { conversationId } = useParams();
-  const { session } = useAuth();
+  const { session, profile } = useAuth();
   const [conversation, setConversation] = useState(null);
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -126,7 +126,9 @@ export default function ConversationDetailPage() {
   return (
     <main className="management-shell conversation-shell">
       <Link className="public-back-link" to="/conversations">
-        Back to conversations
+        {profile.role === 'TENANT'
+          ? 'Back to messages'
+          : 'Back to conversations'}
       </Link>
       {loading ? <p aria-live="polite">Loading conversation...</p> : null}
       {!loading && !conversation ? (
@@ -151,7 +153,27 @@ export default function ConversationDetailPage() {
           </header>
           <section aria-labelledby="rental-context-title">
             <h2 id="rental-context-title">Rental context</h2>
-            {conversation.listing_context.listing ? (
+            {conversation.tenancy_context ? (
+              <div>
+                <strong>
+                  Tenancy in {conversation.tenancy_context.locality}
+                </strong>
+                <p>
+                  {conversation.tenancy_context.read_only
+                    ? 'Past tenancy - retained message history.'
+                    : 'Ongoing property communication.'}
+                </p>
+                <Link
+                  to={
+                    ['LANDLORD', 'AGENT'].includes(profile.role)
+                      ? `/owner/properties/${conversation.tenancy_context.property_id}`
+                      : '/tenant/home'
+                  }
+                >
+                  Open property record
+                </Link>
+              </div>
+            ) : conversation.listing_context.listing ? (
               <div>
                 <strong>{conversation.listing_context.listing.title}</strong>
                 <p>
@@ -236,7 +258,9 @@ export default function ConversationDetailPage() {
                           setReportDetails(event.target.value)
                         }
                       />
-                      <button type="submit">Submit report</button>
+                      <button className="primary-button" type="submit">
+                        Submit report
+                      </button>
                     </form>
                   ) : null}
                   <time dateTime={item.created_at}>
@@ -263,7 +287,15 @@ export default function ConversationDetailPage() {
                 maxLength={4000}
                 onChange={(event) => setDraft(event.target.value)}
               />
-              <button type="submit" disabled={sending || !draft.trim()}>
+              <button
+                className="primary-button"
+                type="submit"
+                disabled={
+                  sending ||
+                  !draft.trim() ||
+                  conversation.tenancy_context?.read_only
+                }
+              >
                 {sending ? 'Sending...' : 'Send message'}
               </button>
             </form>

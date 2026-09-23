@@ -2,6 +2,7 @@ import { AppError } from '../middleware/AppError.js';
 import { profileRepository } from '../repositories/profileRepository.js';
 import {
   landlordProfileRepository,
+  propertyManagerRepository,
   preferredLocationRepository,
   RoleProfileRepositoryError,
   tenantProfileRepository,
@@ -36,6 +37,7 @@ export function createProfileService({
   tenantProfiles = tenantProfileRepository,
   landlordProfiles = landlordProfileRepository,
   locations = preferredLocationRepository,
+  managers = propertyManagerRepository,
 } = {}) {
   async function requireMatchingRole(userId, expectedRole) {
     const applicationProfile = await profiles.findByUserId(userId);
@@ -58,7 +60,24 @@ export function createProfileService({
     return ensureRoleProfile(landlordProfiles, userId);
   }
 
+  async function ensurePropertyManager(userId) {
+    const base = await profiles.findByUserId(userId);
+    if (!base || !['LANDLORD', 'AGENT'].includes(base.role)) {
+      throw new AppError({
+        statusCode: 403,
+        code: 'FORBIDDEN',
+        message: 'Property management access is required.',
+      });
+    }
+    const manager =
+      base.role === 'LANDLORD'
+        ? await ensureLandlordProfile(userId)
+        : await ensureRoleProfile(managers, userId);
+    return { ...manager, role: base.role };
+  }
+
   return Object.freeze({
+    ensurePropertyManager,
     ensureTenantProfile,
     ensureLandlordProfile,
 
@@ -72,15 +91,15 @@ export function createProfileService({
     },
 
     async getLandlordProfile(userId) {
-      const roleProfile = await ensureLandlordProfile(userId);
+      const roleProfile = await ensurePropertyManager(userId);
       const baseProfile = await profiles.findByUserId(userId);
       return { roleProfile, baseProfile };
     },
 
     async updateLandlordProfile(userId, fields) {
-      await ensureLandlordProfile(userId);
+      await ensurePropertyManager(userId);
       const baseProfile = await profiles.updateBaseFields(userId, fields);
-      const roleProfile = await landlordProfiles.findByUserId(userId);
+      const roleProfile = await ensurePropertyManager(userId);
       return { roleProfile, baseProfile };
     },
 

@@ -1,4 +1,4 @@
-services:
+cservices:
   - type: web
     name: mauritius-connect-api
     runtime: node

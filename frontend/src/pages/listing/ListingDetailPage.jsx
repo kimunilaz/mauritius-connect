@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import ListingForm from '../../components/listing/ListingForm.jsx';
+import RentalJourney from '../../components/property/RentalJourney.jsx';
 import ApplicationQuestionManager from '../../components/listing/ApplicationQuestionManager.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { ApiError } from '../../services/apiClient.js';
@@ -159,7 +160,12 @@ export default function ListingDetailPage() {
         </div>
         <Link to="/landlord/listings">Back to listings</Link>
       </header>
-      <p className="status-label">
+      <RentalJourney
+        step={2}
+        propertyId={listing.property_id}
+        listingId={listing.id}
+      />
+      <p className="status-label" data-status={listing.status}>
         Status: {listingStatusLabel(listing.status)}
       </p>
       {message ? (

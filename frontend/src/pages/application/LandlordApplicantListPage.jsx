@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import RentalJourney from '../../components/property/RentalJourney.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { ApiError } from '../../services/apiClient.js';
 import { listLandlordApplications } from '../../services/landlordApplicationService.js';
@@ -78,6 +79,11 @@ export default function LandlordApplicantListPage() {
         </div>
         <Link to={`/landlord/listings/${listingId}`}>Back to listing</Link>
       </header>
+      <RentalJourney
+        step={3}
+        propertyId={meta.listing?.property_id}
+        listingId={listingId}
+      />
 
       <nav
         className="applicant-status-tabs"
@@ -144,7 +150,10 @@ export default function LandlordApplicantListPage() {
                     )}
                     <div>
                       <h2>{name}</h2>
-                      <p className="status-label">
+                      <p
+                        className="status-label"
+                        data-status={application.status}
+                      >
                         {applicationStatusLabel(application.status)}
                       </p>
                     </div>

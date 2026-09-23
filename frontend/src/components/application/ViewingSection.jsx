@@ -66,7 +66,7 @@ export default function ViewingSection({
     ['PROPOSED', 'CONFIRMED'].includes(status),
   );
   const canPropose =
-    role === 'LANDLORD' &&
+    ['LANDLORD', 'AGENT'].includes(role) &&
     ['SHORTLISTED', 'VIEWING_INVITED'].includes(applicationStatus) &&
     !open;
 
@@ -166,7 +166,9 @@ export default function ViewingSection({
             const afterStart = new Date(viewing.start_time) <= new Date();
             return (
               <li key={viewing.id}>
-                <strong>{label(viewing.status)}</strong>
+                <strong className="status-label" data-status={viewing.status}>
+                  {label(viewing.status)}
+                </strong>
                 <span>{localDateTime(viewing.start_time)}</span>
                 {viewing.end_time ? (
                   <span>Ends {localDateTime(viewing.end_time)}</span>
@@ -219,7 +221,7 @@ export default function ViewingSection({
                       Cancel viewing
                     </button>
                   ) : null}
-                  {role === 'LANDLORD' &&
+                  {['LANDLORD', 'AGENT'].includes(role) &&
                   viewing.status === 'CONFIRMED' &&
                   afterStart ? (
                     <>

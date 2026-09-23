@@ -75,7 +75,7 @@ describe('property route security and list', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(profileResponse()));
     renderApp({ route: '/landlord/properties', client: sessionClient() });
     expect(
-      await screen.findByRole('heading', { name: 'Jane Doe' }),
+      await screen.findByRole('heading', { name: 'Welcome back, Jane' }),
     ).toBeInTheDocument();
     expect(screen.queryByText('Your properties')).not.toBeInTheDocument();
   });

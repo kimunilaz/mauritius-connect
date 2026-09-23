@@ -71,7 +71,7 @@ export default function OnboardingPage() {
   return (
     <AuthLayout
       title="Complete your profile"
-      intro="Choose how you will use the platform. Detailed rental profiles come later."
+      intro="Choose Landlord to manage your properties, or Tenant to apply for rentals on Asserta."
     >
       <form className="auth-form" onSubmit={handleSubmit} noValidate>
         <fieldset className="role-options">
@@ -94,7 +94,17 @@ export default function OnboardingPage() {
               checked={form.role === 'LANDLORD'}
               onChange={updateField}
             />
-            Landlord
+            I manage my own properties
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="role"
+              value="AGENT"
+              checked={form.role === 'AGENT'}
+              onChange={updateField}
+            />
+            I manage properties for owners
           </label>
         </fieldset>
         <FormField

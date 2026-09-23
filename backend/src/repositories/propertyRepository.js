@@ -1,7 +1,9 @@
+import { AppError } from '../middleware/AppError.js';
 import { getPrivilegedSupabaseClient } from '../config/supabase.js';
 
 const PROPERTY_COLUMNS = [
   'id',
+  'managed_owner_id',
   'property_type',
   'address_line_1',
   'address_line_2',
@@ -36,21 +38,31 @@ export const propertyRepository = {
   async create(landlordProfileId, property) {
     const { data, error } = await getPrivilegedSupabaseClient()
       .from('properties')
-      .insert({ landlord_id: landlordProfileId, ...property })
+      .insert({ property_manager_id: landlordProfileId, ...property })
       .select(PROPERTY_COLUMNS)
       .single();
 
+    if (error?.message?.includes('OWNER_NOT_FOUND'))
+      throw new AppError({
+        statusCode: 404,
+        code: 'OWNER_NOT_FOUND',
+        message: 'Active owner record not found.',
+      });
     if (error || !data) throw failure('WRITE_FAILED');
     return data;
   },
 
-  async listForLandlord(landlordProfileId, { archived, page, limit }) {
+  async listForLandlord(
+    landlordProfileId,
+    { archived, page, limit, owner_id },
+  ) {
     const first = (page - 1) * limit;
     let query = getPrivilegedSupabaseClient()
       .from('properties')
       .select(PROPERTY_COLUMNS, { count: 'exact' })
-      .eq('landlord_id', landlordProfileId);
+      .eq('property_manager_id', landlordProfileId);
 
+    if (owner_id) query = query.eq('managed_owner_id', owner_id);
     query = archived
       ? query.not('archived_at', 'is', null)
       : query.is('archived_at', null);
@@ -68,7 +80,7 @@ export const propertyRepository = {
       .from('properties')
       .select(PROPERTY_COLUMNS)
       .eq('id', propertyId)
-      .eq('landlord_id', landlordProfileId)
+      .eq('property_manager_id', landlordProfileId)
       .maybeSingle();
 
     if (error) throw failure('READ_FAILED');
@@ -80,11 +92,18 @@ export const propertyRepository = {
       .from('properties')
       .update(fields)
       .eq('id', propertyId)
-      .eq('landlord_id', landlordProfileId)
+      .eq('property_manager_id', landlordProfileId)
       .is('archived_at', null)
       .select(PROPERTY_COLUMNS)
       .maybeSingle();
 
+    if (error?.message?.includes('PROPERTY_HAS_TENANCY'))
+      throw new AppError({
+        statusCode: 409,
+        code: 'PROPERTY_HAS_TENANCY',
+        message:
+          'End or cancel current and upcoming tenancies before archiving this property.',
+      });
     if (error) throw failure('WRITE_FAILED');
     return data;
   },
@@ -94,11 +113,18 @@ export const propertyRepository = {
       .from('properties')
       .update({ archived_at: archivedAt })
       .eq('id', propertyId)
-      .eq('landlord_id', landlordProfileId)
+      .eq('property_manager_id', landlordProfileId)
       .is('archived_at', null)
       .select(PROPERTY_COLUMNS)
       .maybeSingle();
 
+    if (error?.message?.includes('PROPERTY_HAS_TENANCY'))
+      throw new AppError({
+        statusCode: 409,
+        code: 'PROPERTY_HAS_TENANCY',
+        message:
+          'End or cancel current and upcoming tenancies before archiving this property.',
+      });
     if (error) throw failure('WRITE_FAILED');
     return data;
   },

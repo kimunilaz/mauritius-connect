@@ -108,7 +108,7 @@ describe('tenant applications list', () => {
     );
     renderApp({ route: '/tenant/applications', client: sessionClient() });
     expect(
-      await screen.findByRole('heading', { name: 'Jane Doe' }),
+      await screen.findByRole('heading', { name: 'Portfolio overview' }),
     ).toBeVisible();
     expect(screen.queryByText('My applications')).not.toBeInTheDocument();
   });

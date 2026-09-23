@@ -84,7 +84,7 @@ function unavailableSave() {
 
 afterEach(() => vi.unstubAllGlobals());
 
-describe('saved rentals route and list', () => {
+describe('saved homes route and list', () => {
   it('redirects logged-out visitors to login', async () => {
     renderApp({ route: '/tenant/saved-listings' });
     expect(
@@ -99,9 +99,9 @@ describe('saved rentals route and list', () => {
     );
     renderApp({ route: '/tenant/saved-listings', client: sessionClient() });
     expect(
-      await screen.findByRole('heading', { name: 'Jane Doe' }),
+      await screen.findByRole('heading', { name: 'Portfolio overview' }),
     ).toBeVisible();
-    expect(screen.queryByText('Saved rentals')).not.toBeInTheDocument();
+    expect(screen.queryByText('Saved homes')).not.toBeInTheDocument();
   });
 
   it('shows an empty state with a public browsing action', async () => {
@@ -114,7 +114,7 @@ describe('saved rentals route and list', () => {
       }),
     );
     renderApp({ route: '/tenant/saved-listings', client: sessionClient() });
-    expect(await screen.findByText('No saved rentals yet')).toBeVisible();
+    expect(await screen.findByText('No saved homes yet')).toBeVisible();
     expect(
       screen.getAllByRole('link', { name: 'Browse rentals' })[0],
     ).toHaveAttribute('href', '/listings');
@@ -188,7 +188,7 @@ describe('saved rentals route and list', () => {
     renderApp({ route: '/tenant/saved-listings', client: sessionClient() });
     await screen.findByText('This rental is no longer available');
     fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
-    expect(await screen.findByText('No saved rentals yet')).toBeVisible();
+    expect(await screen.findByText('No saved homes yet')).toBeVisible();
     expect(
       fetchMock.mock.calls.some(
         ([url, options]) =>
@@ -213,18 +213,18 @@ describe('saved rentals route and list', () => {
       }),
     );
     renderApp({ route: '/tenant/saved-listings', client: sessionClient() });
-    expect(await screen.findByText('Loading saved rentals...')).toBeVisible();
+    expect(await screen.findByText('Loading saved homes...')).toBeVisible();
     resolveList(
       jsonResponse(503, {
         success: false,
         error: {
           code: 'UNAVAILABLE',
-          message: 'Saved rentals are unavailable.',
+          message: 'Saved homes are unavailable.',
         },
       }),
     );
     expect(
-      await screen.findByText('Saved rentals are unavailable.'),
+      await screen.findByText('Saved homes are unavailable.'),
     ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Try again' })).toBeEnabled();
   });
@@ -306,9 +306,7 @@ describe('public listing detail saved control', () => {
     });
     expect(remove).toHaveAttribute('aria-pressed', 'true');
     fireEvent.click(remove);
-    expect(
-      await screen.findByText('Removed from saved rentals.'),
-    ).toBeVisible();
+    expect(await screen.findByText('Removed from saved homes.')).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'Save rental' }));
     expect(await screen.findByText('Rental saved.')).toBeVisible();
     expect(

@@ -1,7 +1,7 @@
 # Database foundation
 
 The ordered SQL migrations in `migrations/` are the source of truth for the
-Mauritius Rental Platform schema. They target PostgreSQL 13+ and Supabase
+Asserta schema. They target PostgreSQL 13+ and Supabase
 PostgreSQL. `gen_random_uuid()` is built into supported PostgreSQL versions, so
 TASK-001 does not install an extra UUID extension.
 
@@ -156,3 +156,7 @@ generated object paths in `property_images`; it never persists signed URLs.
 
 The `schema/` directory documents snapshot policy only. A duplicate hand-edited
 schema is not maintained because it would drift from the ordered migrations.
+
+## TASK-031 property operations
+
+Four additive 20260922 migrations add ten private operational tables (31 total), tenancy conversations and scoped aggregate functions. No existing property keys or rental histories are rewritten. Run `npm run db:verify` locally; hosted application and bucket setup require the documented environment authorization. See [schema contract](../docs/DATABASE.md) and [implementation plan](../docs/TASK_031_PLAN.md).

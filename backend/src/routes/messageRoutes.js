@@ -18,7 +18,7 @@ const participant = (authService) => [
   createAuthenticateUser(authService),
   createLoadApplicationProfile(authService),
   requireActiveAccount,
-  requireRole('TENANT', 'LANDLORD'),
+  requireRole('TENANT', 'LANDLORD', 'AGENT'),
 ];
 
 export function createMessageRouter(

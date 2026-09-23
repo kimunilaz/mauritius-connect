@@ -15,7 +15,14 @@ export class ApiError extends Error {
 
 export async function apiRequest(
   path,
-  { method = 'GET', accessToken, body, signal, returnEnvelope = false } = {},
+  {
+    method = 'GET',
+    accessToken,
+    body,
+    signal,
+    returnEnvelope = false,
+    timeoutMs,
+  } = {},
 ) {
   const headers = { Accept: 'application/json' };
 
@@ -31,37 +38,69 @@ export async function apiRequest(
     headers['Content-Type'] = 'application/json';
   }
 
-  const response = await fetch(`${apiBaseUrl}${path}`, {
-    method,
-    headers,
-    body: body === undefined || multipart ? body : JSON.stringify(body),
-    signal,
-  });
-
-  if (response.status === 204) {
-    return null;
-  }
-
-  let payload;
+  const controller = new AbortController();
+  const abort = () => controller.abort(signal.reason);
+  if (signal?.aborted) abort();
+  else signal?.addEventListener('abort', abort, { once: true });
+  let timedOut = false;
+  const timer = globalThis.setTimeout(
+    () => {
+      timedOut = true;
+      controller.abort();
+    },
+    timeoutMs ?? (multipart ? 120000 : 30000),
+  );
 
   try {
-    payload = await response.json();
-  } catch {
-    throw new ApiError({
-      status: response.status,
-      code: 'INVALID_API_RESPONSE',
-      message: 'The server returned an invalid response.',
+    const response = await fetch(`${apiBaseUrl}${path}`, {
+      method,
+      headers,
+      body: body === undefined || multipart ? body : JSON.stringify(body),
+      signal: controller.signal,
     });
-  }
 
-  if (!response.ok || payload.success !== true) {
-    throw new ApiError({
-      status: response.status,
-      code: payload.error?.code ?? 'API_REQUEST_FAILED',
-      message: payload.error?.message ?? 'The request could not be completed.',
-      fields: payload.error?.fields,
-    });
-  }
+    if (response.status === 204) {
+      return null;
+    }
 
-  return returnEnvelope ? payload : payload.data;
+    let payload;
+
+    try {
+      payload = await response.json();
+    } catch (error) {
+      if (controller.signal.aborted) throw error;
+      throw new ApiError({
+        status: response.status,
+        code: 'INVALID_API_RESPONSE',
+        message: 'The server returned an invalid response.',
+      });
+    }
+
+    if (!response.ok || payload.success !== true) {
+      throw new ApiError({
+        status: response.status,
+        code: payload.error?.code ?? 'API_REQUEST_FAILED',
+        message:
+          payload.error?.message ?? 'The request could not be completed.',
+        fields: payload.error?.fields,
+      });
+    }
+
+    return returnEnvelope ? payload : payload.data;
+  } catch (error) {
+    if (timedOut && !signal?.aborted) {
+      throw new ApiError({
+        status: 0,
+        code: 'REQUEST_TIMEOUT',
+        message:
+          method === 'GET'
+            ? 'The server is taking too long to respond. Please try again.'
+            : 'The server is taking too long to respond. Check whether your changes were saved before trying again.',
+      });
+    }
+    throw error;
+  } finally {
+    globalThis.clearTimeout(timer);
+    signal?.removeEventListener('abort', abort);
+  }
 }

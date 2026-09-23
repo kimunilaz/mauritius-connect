@@ -1,8 +1,21 @@
-# Mauritius Rental Platform — Testing Strategy
+# Asserta — Testing Strategy
+
+## TASK-032 current scope
+
+TASK-032: db:verify runs the 22 existing operations cases for both LANDLORD and AGENT plus agent legacy-backfill, cross-agent, tenancy, leasing, archive and RLS tests. Backend agents.test.js checks roles, private owner access, mass assignment and stale edits. Isolated Playwright agents.spec.js checks desktop/mobile owner management and property context. Real hosted prototype E2E includes a prepared agent scenario; it requires authorized forward migrations and the private operations bucket.
+
+
+## TASK-031 verification additions
+
+`npm run test` includes operations API/security tests and isolated PostgreSQL migration/domain checks. `database/tests/operations.test.mjs` checks independent occupied onboarding, cross-property FKs, overlap, receipt retries/over-recording, tenant maintenance, expense linkage, private documents, notifications, tenancy messages, filters and RLS. PGlite Promise concurrency tests verify serialized outcomes but are not a substitute for hosted multi-connection race tests.
+
+`npm run test:e2e:workspace` includes `e2e/operations.spec.js` at 1440 and 390 pixels: tenancy onboarding without listing, rent receipt, owner maintenance, inspection checklist, tasks, expense, private document upload/archive, Property 360, reports and tenant maintenance controls. These browser tests intercept APIs; database/API suites verify underlying rules separately. Hosted end-to-end certification requires the pending migrations and private bucket to be authorized and installed, followed by the real leasing E2E and operations hosted tests. Do not describe fixture E2E as live integration verification.
 
 ## 1. Purpose
 
-This document defines the testing requirements for the Mauritius Rental Platform.
+For the Asserta branding regression, run `npm run test:e2e:workspace`. The isolated Chromium suite checks public owner/tenant entry points, visible branding across all roles, responsive layouts, light/dark logo assets and favicon sizes. It uses intercepted Auth/API fixtures and does not certify a live deployment or email delivery.
+
+This document defines the testing requirements for the Asserta.
 
 Testing is part of implementation, not a final cleanup step.
 

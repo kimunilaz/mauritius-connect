@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import ListingForm from '../../components/listing/ListingForm.jsx';
+import RentalJourney from '../../components/property/RentalJourney.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { ApiError } from '../../services/apiClient.js';
 import { createListing } from '../../services/listingService.js';
@@ -65,6 +66,7 @@ export default function CreateListingPage() {
         </div>
         <Link to="/landlord/listings">Back to listings</Link>
       </header>
+      <RentalJourney step={2} propertyId={selectedPropertyId} />
       <p>
         Save the rental-cycle details as a private draft. Submitting for review
         is a separate action.

@@ -1,8 +1,17 @@
-# Mauritius Rental Platform — Development Roadmap
+# Asserta — Development Roadmap
+
+## TASK-032 current scope
+
+Current task TASK-032 adds AGENT and private managed property owners using shared operations. Its hosted rollout remains pending the documented environment gate. Agency teams, commissions, management fees, trust accounting and owner portals are deferred.
+
+
+## Current direction: TASK-031
+
+Property operations now takes precedence over the historical leasing-first roadmap below. Current delivery includes portfolio/Property 360, explicit tenancies, offline rent records, simple income/expense records, maintenance, inspections, private documents, tasks and reports. Preserve existing leasing and discovery. Hosted migration authorization and full hosted verification remain release gates; see TASK_031_REPORT.md. Do not automatically start a later task.
 
 ## 1. Purpose
 
-This roadmap defines the approved implementation order for the Mauritius Rental Platform.
+This roadmap defines the approved implementation order for the Asserta.
 
 Codex is the primary coding agent.
 

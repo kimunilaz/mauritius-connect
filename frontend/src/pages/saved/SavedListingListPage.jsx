@@ -46,7 +46,7 @@ export default function SavedListingListPage() {
         setMessage(
           error instanceof ApiError
             ? error.message
-            : "We couldn't load your saved rentals. Try again.",
+            : "We couldn't load your saved homes. Try again.",
         );
       } finally {
         if (!signal?.aborted) setLoading(false);
@@ -73,7 +73,7 @@ export default function SavedListingListPage() {
       setMessage(
         error instanceof ApiError
           ? error.message
-          : 'The saved rental could not be removed.',
+          : 'The saved home could not be removed.',
       );
     } finally {
       setRemovingId(null);
@@ -85,7 +85,7 @@ export default function SavedListingListPage() {
       <header className="profile-header">
         <div>
           <p className="eyebrow">Tenant</p>
-          <h1>Saved rentals</h1>
+          <h1>Saved homes</h1>
           <p>
             Places you want to revisit, including unavailable saved items you
             can remove.
@@ -99,7 +99,7 @@ export default function SavedListingListPage() {
           {message}
         </p>
       ) : null}
-      {loading ? <p aria-live="polite">Loading saved rentals...</p> : null}
+      {loading ? <p aria-live="polite">Loading saved homes...</p> : null}
       {!loading && message ? (
         <button
           className="secondary-button"
@@ -111,7 +111,7 @@ export default function SavedListingListPage() {
       ) : null}
       {!loading && !message && saves.length === 0 ? (
         <section className="empty-state">
-          <h2>No saved rentals yet</h2>
+          <h2>No saved homes yet</h2>
           <p>Browse rentals and save places you want to revisit.</p>
           <Link className="primary-link-button" to="/listings">
             Browse rentals
@@ -120,7 +120,7 @@ export default function SavedListingListPage() {
       ) : null}
 
       {!loading && !message && saves.length ? (
-        <ul className="saved-listing-grid" aria-label="Saved rentals">
+        <ul className="saved-listing-grid" aria-label="Saved homes">
           {saves.map((save) => (
             <li key={save.listing_id}>
               {save.availability === 'AVAILABLE' && save.listing ? (
@@ -164,7 +164,7 @@ export default function SavedListingListPage() {
       ) : null}
 
       {!loading && !message && meta.total_pages > 1 ? (
-        <nav className="pagination" aria-label="Saved rental pages">
+        <nav className="pagination" aria-label="Saved home pages">
           <button
             type="button"
             disabled={meta.page <= 1 || removingId !== null}

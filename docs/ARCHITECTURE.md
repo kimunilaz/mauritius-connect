@@ -1,4 +1,17 @@
-# Mauritius Rental Platform — Architecture
+# Asserta — Architecture
+
+## TASK-032 current scope
+
+TASK-032: ensurePropertyManager resolves both LANDLORD and AGENT into property_manager_profiles. Existing landlord_id retains self-owner identity. Agent property references a managed_owner_id owned by the same manager. Shared services, routes and /owner screens run both roles; only Owners CRUD is agent-specific. Legacy landlord profile IDs are preserved by backfill.
+
+
+## TASK-031: property operations architecture
+
+Property -> tenancies, rent records, maintenance, inspections, private documents, financial records and tasks. Existing properties remain individual rentable assets; LANDLORD identity and all leasing routes remain compatible. A future building record can group existing property keys; this task does not rewrite them into units.
+
+`operationRoutes` -> strict `operationValidators`/controller -> ownership/tenancy-scoped `operationService` -> `operationRepository` -> PostgreSQL. Summary and rent functions aggregate before pagination. Owner summary uses one bounded RPC plus signed cover URLs. Existing conversation/message engine accepts a tenancy context as an alternative to a listing. Tenant access and message insertion are revoked when the tenancy ends; owners retain historical messages.
+
+React owner routes are `/owner`, `/owner/properties`, `/owner/properties/:propertyId`, `/owner/:domain`, `/owner/reports`; `/account` shows the same owner overview. Property tabs reuse the operational panels and existing physical-property editor. `/tenant/home` exposes only relevant rent, maintenance and shared documents.
 
 ## 1. Architecture Goal
 

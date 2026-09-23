@@ -206,7 +206,7 @@ export default function PropertyImageManager({
                   Move later
                 </button>
                 <button
-                  className="text-button"
+                  className="text-button text-button-danger"
                   type="button"
                   disabled={busy}
                   onClick={() => remove(image)}

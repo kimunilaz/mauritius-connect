@@ -1,6 +1,17 @@
 # Private-Beta Deployment
 
+## TASK-032 current scope
+
+TASK-032 rollout requires the four pending TASK-031 migrations/private operations bucket, then the three TASK-032 forward migrations in timestamp order. Inspect the hosted ledger first, obtain environment authorization, apply forward migrations without reset, and run hosted DB, security and real E2E checks. Local pass does not establish hosted completion.
+
+
+## TASK-031 release gate
+
+Four additive migrations: `202609220001_property_operations.sql`, `202609220002_operations_summary.sql`, `202609220003_tenancy_communications.sql`, `202609220004_rent_records.sql`. Before deploying frontend/backend, review SQL, inspect hosted migration ledger, obtain target-environment authorization, sync/apply only pending forward migrations, and run `npm run operations:storage:setup` for the private `property-operations` bucket. Never reset hosted data. Then run hosted schema/security/API checks and real E2E; deploy compatible API and frontend together. A UI rollback can hide operational routes while preserving new records; do not destructively reverse data migrations.
+
 ## Target and release policy
+
+Asserta's intended public domain is `https://asserta-mu.com`. TASK-030 does not verify domain registration, DNS, TLS or a live deployment. Keep existing infrastructure identifiers. Before adopting this origin, verify domain ownership and hosting, then configure the exact frontend origin, CORS and Supabase Auth redirects through the release procedure below. Do not point local authentication at an unverified domain.
 
 The supported private-beta topology is:
 

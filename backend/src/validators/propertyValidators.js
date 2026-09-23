@@ -35,7 +35,9 @@ const propertyFields = {
   parking_spaces: z.number().int().min(0).optional(),
 };
 
-export const createPropertySchema = z.object(propertyFields).strict();
+export const createPropertySchema = z
+  .object({ ...propertyFields, managed_owner_id: z.uuid().optional() })
+  .strict();
 
 export const updatePropertySchema = z
   .object({
@@ -57,6 +59,7 @@ export const propertyIdParamsSchema = z
 
 export const propertyListQuerySchema = z
   .object({
+    owner_id: z.uuid().optional(),
     page: z.coerce.number().int().min(1).default(1),
     limit: z.coerce.number().int().min(1).max(100).default(20),
     archived: z

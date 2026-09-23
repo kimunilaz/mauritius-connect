@@ -42,7 +42,7 @@ export function createApplicationTransitionService({
   transitions = applicationTransitionRepository,
 } = {}) {
   async function landlordTransition(userId, applicationId, targetStatus) {
-    const landlord = await profiles.ensureLandlordProfile(userId);
+    const landlord = await profiles.ensurePropertyManager(userId);
     const application = await applications.findVisibleById(applicationId);
     if (!application) throw applicationNotFound();
     const expectedStatus = application.status;
@@ -55,7 +55,7 @@ export function createApplicationTransitionService({
       await transitions.transition({
         applicationId,
         actorUserId: userId,
-        actorRole: 'LANDLORD',
+        actorRole: landlord.role,
         expectedStatus,
         targetStatus,
       }),

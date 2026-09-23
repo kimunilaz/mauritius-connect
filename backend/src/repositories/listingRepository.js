@@ -20,7 +20,7 @@ const LISTING_COLUMNS = [
 
 const PROPERTY_COLUMNS = [
   'id',
-  'landlord_id',
+  'property_manager_id',
   'property_type',
   'district',
   'locality',
@@ -75,7 +75,7 @@ export const listingRepository = {
     let query = getPrivilegedSupabaseClient()
       .from('listings')
       .select(WITH_PROPERTY, { count: 'exact' })
-      .eq('property.landlord_id', landlordId);
+      .eq('property.property_manager_id', landlordId);
     if (status) query = query.eq('status', status);
     const { data, error, count } = await query
       .order('created_at', { ascending: false })
@@ -89,7 +89,7 @@ export const listingRepository = {
       .from('listings')
       .select(WITH_PROPERTY)
       .eq('id', listingId)
-      .eq('property.landlord_id', landlordId)
+      .eq('property.property_manager_id', landlordId)
       .maybeSingle();
     if (error) throw failure('READ_FAILED');
     return data;

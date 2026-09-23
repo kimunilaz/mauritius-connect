@@ -209,11 +209,20 @@ async function cleanupFixtures() {
         .in('user_id', userIds)
     : { data: [] };
   const landlordIds = landlordProfiles.map(({ id }) => id);
-  const { data: properties = [] } = landlordIds.length
+  const { data: managers = [], error: managerError } = userIds.length
+    ? await adminClient
+        .from('property_manager_profiles')
+        .select('id')
+        .in('user_id', userIds)
+    : { data: [] };
+  if (managerError)
+    throw new Error('Agent fixture cleanup requires TASK-032 migrations.');
+  const managerIds = managers.map(({ id }) => id);
+  const { data: properties = [] } = managerIds.length
     ? await adminClient
         .from('properties')
         .select('id')
-        .in('landlord_id', landlordIds)
+        .in('property_manager_id', managerIds)
     : { data: [] };
   const propertyIds = properties.map(({ id }) => id);
   const { data: images = [] } = propertyIds.length
@@ -236,11 +245,11 @@ async function cleanupFixtures() {
         .in('listing_id', listingIds)
     : { data: [] };
   const applicationIds = applications.map(({ id }) => id);
-  const { data: conversations = [] } = listingIds.length
+  const { data: conversations = [] } = userIds.length
     ? await adminClient
         .from('conversations')
         .select('id')
-        .in('listing_id', listingIds)
+        .in('landlord_user_id', userIds)
     : { data: [] };
   const conversationIds = conversations.map(({ id }) => id);
   const { data: messages = [] } = conversationIds.length
@@ -279,6 +288,46 @@ async function cleanupFixtures() {
     conversationIds,
   );
   await deleteWhere('conversations', 'id', conversationIds);
+  if (propertyIds.length) {
+    const { data: operationalFiles = [], error: fileError } = await adminClient
+      .from('property_documents')
+      .select('storage_path')
+      .in('property_id', propertyIds);
+    if (fileError)
+      throw new Error(
+        'Operations fixture cleanup requires TASK-031 migrations.',
+      );
+    if (operationalFiles.length) {
+      const { error } = await adminClient.storage
+        .from('property-operations')
+        .remove(operationalFiles.map((f) => f.storage_path));
+      if (error) throw new Error('Operations fixture storage cleanup failed.');
+    }
+    const { data: maintenance = [], error: maintenanceError } =
+      await adminClient
+        .from('maintenance_requests')
+        .select('id')
+        .in('property_id', propertyIds);
+    if (maintenanceError)
+      throw new Error('Operations fixture discovery failed.');
+    await deleteWhere(
+      'maintenance_updates',
+      'maintenance_id',
+      maintenance.map((m) => m.id),
+    );
+    for (const table of [
+      'property_financial_records',
+      'property_documents',
+      'property_inspections',
+      'property_tasks',
+      'maintenance_requests',
+      'rent_receipts',
+      'rent_ledger_entries',
+      'tenancies',
+      'property_operational_details',
+    ])
+      await deleteWhere(table, 'property_id', propertyIds);
+  }
   await deleteWhere('viewings', 'application_id', applicationIds);
   await deleteWhere(
     'application_status_history',
@@ -319,6 +368,12 @@ async function cleanupFixtures() {
   }
   await deleteWhere('properties', 'id', propertyIds);
   await deleteWhere(
+    'managed_property_owners',
+    'property_manager_id',
+    managerIds,
+  );
+  await deleteWhere('property_manager_profiles', 'id', managerIds);
+  await deleteWhere(
     'tenant_preferred_locations',
     'tenant_profile_id',
     tenantIds,
@@ -348,10 +403,130 @@ test.describe('TASK-025 deterministic prototype QA', () => {
     await createPerson('landlordA', 'LANDLORD', 'Dev');
     await createPerson('landlordB', 'LANDLORD', 'Elise');
     await createPerson('admin', 'ADMIN', 'Farah');
+    await createPerson('agentA', 'AGENT', 'Anita');
+    await createPerson('agentB', 'AGENT', 'Bala');
   });
 
   test.afterAll(async () => {
     await cleanupFixtures();
+  });
+
+  test('agent client owners share operations and remain isolated from other roles', async ({
+    page,
+  }) => {
+    const a = fixture.people.agentA,
+      b = fixture.people.agentB;
+    const created = await api('/agent/owners', {
+      token: a.token,
+      method: 'POST',
+      body: {
+        name: 'Recorded client owner',
+        email: 'client@example.test',
+        notes: 'Private agency notes',
+      },
+    });
+    expect(created.status).toBe(201);
+    const owner = created.payload.data;
+    for (const person of [
+      b,
+      fixture.people.landlordA,
+      fixture.people.tenantA,
+      fixture.people.admin,
+    ]) {
+      const r = await api(`/agent/owners/${owner.id}`, { token: person.token });
+      expect(r.status).toBe(person === b ? 404 : 403);
+    }
+    const input = {
+      property_type: 'HOUSE',
+      district: 'Moka',
+      locality: 'Moka',
+      bedrooms: 2,
+      bathrooms: 1,
+    };
+    expect(
+      (
+        await api('/properties', {
+          token: a.token,
+          method: 'POST',
+          body: input,
+        })
+      ).status,
+    ).toBe(422);
+    expect(
+      (
+        await api('/properties', {
+          token: b.token,
+          method: 'POST',
+          body: { ...input, managed_owner_id: owner.id },
+        })
+      ).status,
+    ).toBe(404);
+    const createdProperty = await api('/properties', {
+      token: a.token,
+      method: 'POST',
+      body: { ...input, managed_owner_id: owner.id },
+    });
+    expect(createdProperty.status).toBe(201);
+    const property = createdProperty.payload.data;
+    const tenancy = await api('/landlord/operations/tenancies', {
+      token: a.token,
+      method: 'POST',
+      body: {
+        property_id: property.id,
+        tenant_name: 'Existing client tenant',
+        start_date: futureDate(-30),
+        monthly_rent: 18000,
+        status: 'ACTIVE',
+      },
+    });
+    expect(tenancy.status).toBe(201);
+    expect(
+      (await api(`/properties/${property.id}`, { token: b.token })).status,
+    ).toBe(404);
+    expect(
+      (
+        await api(`/landlord/operations/tenancies/${tenancy.payload.data.id}`, {
+          token: b.token,
+        })
+      ).status,
+    ).toBe(404);
+    const summary = await api(
+      `/landlord/operations/summary?owner_id=${owner.id}`,
+      { token: a.token },
+    );
+    expect(summary.status).toBe(200);
+    expect(summary.payload.data.portfolio[0].owner_name).toBe(owner.name);
+    expect(summary.payload.data.portfolio[0].occupancy).toBe('OCCUPIED');
+    await login(page, a);
+    await page.goto(`/agent/owners/${owner.id}`);
+    await expect(
+      page.getByRole('heading', { name: owner.name, exact: true }),
+    ).toBeVisible();
+    await page.goto(`/owner/properties/${property.id}`);
+    await expect(
+      page.getByRole('link', { name: owner.name, exact: true }),
+    ).toBeVisible();
+    expect(
+      (
+        await api(`/agent/owners/${owner.id}/archive`, {
+          token: a.token,
+          method: 'POST',
+          body: { version: owner.version },
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await api('/properties', {
+          token: a.token,
+          method: 'POST',
+          body: { ...input, managed_owner_id: owner.id },
+        })
+      ).status,
+    ).toBe(404);
+    expect(
+      (await api(`/properties/${property.id}`, { token: a.token })).status,
+    ).toBe(200);
   });
 
   test('public loading, error, empty, responsive, accessibility, CORS, and auth boundaries', async ({
@@ -370,13 +545,15 @@ test.describe('TASK-025 deterministic prototype QA', () => {
     await expect(
       page.getByRole('heading', { name: /Find a rental/i }),
     ).toBeVisible();
-    await expect(page.getByLabel('District')).toBeVisible();
+    await expect(page.getByLabel('Location', { exact: true })).toBeVisible();
     await expect(page.getByText(/rentals found|No rentals match/i)).toBeVisible(
       {
         timeout: 20_000,
       },
     );
-    await page.getByLabel('District').fill(`No-match-${crypto.randomUUID()}`);
+    await page
+      .getByLabel('Location', { exact: true })
+      .fill(`No-match-${crypto.randomUUID()}`);
     await page.getByRole('button', { name: 'Search rentals' }).click();
     await expect(
       page.getByRole('heading', { name: /No rentals match/i }),
@@ -386,8 +563,8 @@ test.describe('TASK-025 deterministic prototype QA', () => {
 
     await page.setViewportSize({ width: 375, height: 812 });
     await page.reload();
-    await page.getByRole('button', { name: 'Show filters' }).click();
-    await expect(page.getByLabel('Property type')).toBeVisible();
+    await expect(page.getByLabel('Location', { exact: true })).toBeVisible();
+    await expect(page.getByLabel('Bedrooms', { exact: true })).toBeVisible();
     await assertNoHorizontalOverflow(page);
     await page.keyboard.press('Tab');
     await expect(page.locator(':focus')).toBeVisible();
@@ -1114,6 +1291,271 @@ test.describe('TASK-025 deterministic prototype QA', () => {
     await expect(page.getByText('25 Private QA Lane')).toHaveCount(0);
     await page.goto('/notifications');
     await expect(page.getByText(/accepted/i).first()).toBeVisible();
+  });
+
+  test('TASK-031 occupied onboarding, tenancy operations and tenant privacy use real APIs and private storage', async ({
+    page,
+  }) => {
+    const owner = fixture.people.landlordA.token,
+      otherOwner = fixture.people.landlordB.token;
+    const resident = fixture.people.tenantB.token;
+    const today = new Date().toISOString().slice(0, 10);
+    const op = (path, options = {}) =>
+      api(`/landlord/operations${path}`, { token: owner, ...options });
+    const home = (path, options = {}) =>
+      api(`/tenant/operations${path}`, { token: resident, ...options });
+    const create = await api('/properties', {
+      token: owner,
+      method: 'POST',
+      body: {
+        property_type: 'APARTMENT',
+        district: 'Moka',
+        locality: 'Moka',
+        address_line_1: 'Existing occupied QA property',
+        bedrooms: 2,
+        bathrooms: 1,
+      },
+    });
+    expect(create.status).toBe(201);
+    const property = create.payload.data.id;
+    const tenancy = await op('/tenancies', {
+      method: 'POST',
+      body: {
+        property_id: property,
+        tenant_name: 'Existing resident',
+        start_date: today,
+        monthly_rent: 5000,
+        status: 'ACTIVE',
+      },
+    });
+    expect(tenancy.status).toBe(201);
+    const id = tenancy.payload.data.id;
+    expect(
+      (await api(`/landlord/operations/tenancies/${id}`, { token: otherOwner }))
+        .status,
+    ).toBe(404);
+    const invitation = await op(`/tenancies/${id}/invitation`, {
+      method: 'POST',
+    });
+    expect(invitation.status).toBe(200);
+    expect(
+      (
+        await home('/claim', {
+          method: 'POST',
+          body: { code: invitation.payload.data.code },
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await home('/claim', {
+          method: 'POST',
+          body: { code: invitation.payload.data.code },
+        })
+      ).status,
+    ).toBe(404);
+    const charge = await op('/rent', {
+      method: 'POST',
+      body: {
+        property_id: property,
+        tenancy_id: id,
+        period: today.slice(0, 7) + '-01',
+        due_date: today,
+        amount_due: 5000,
+      },
+    });
+    expect(charge.status).toBe(201);
+    const ledger = charge.payload.data.id;
+    const receipt = {
+      amount: 1000,
+      received_on: today,
+      request_key: crypto.randomUUID(),
+    };
+    for (let n = 0; n < 2; n++)
+      expect(
+        (
+          await op(`/rent/${ledger}/receipts`, {
+            method: 'POST',
+            body: receipt,
+          })
+        ).status,
+      ).toBe(201);
+    const competing = await Promise.all(
+      [1, 2].map(() =>
+        op(`/rent/${ledger}/receipts`, {
+          method: 'POST',
+          body: { ...receipt, amount: 4000, request_key: crypto.randomUUID() },
+        }),
+      ),
+    );
+    expect(competing.map((r) => r.status).sort()).toEqual([201, 409]);
+    const paid = await home(`/rent?tenancy_id=${id}`);
+    expect(paid.status).toBe(200);
+    expect(paid.payload.data[0]).toMatchObject({
+      amount_paid: 5000,
+      outstanding: 0,
+      rent_status: 'PAID',
+    });
+    await login(page, fixture.people.tenantB);
+    await page.goto('/tenant/home');
+    await page
+      .getByRole('navigation', { name: 'My home sections' })
+      .getByRole('button', { name: 'Maintenance' })
+      .click();
+    await page.getByRole('button', { name: 'Add record' }).click();
+    await page.getByLabel('Issue title').fill('Operational QA leak');
+    await page.getByLabel('Description').fill('Tap needs repair');
+    await page.getByRole('button', { name: 'Save record' }).click();
+    await expect(page.getByText('Record saved.')).toBeVisible();
+    const requests = await op(`/maintenance?property_id=${property}`);
+    expect(requests.status).toBe(200);
+    const issue = requests.payload.data[0];
+    const update = await op(`/maintenance/${issue.id}`, {
+      method: 'PATCH',
+      body: {
+        version: issue.version,
+        status: 'COMPLETED',
+        actual_cost: 300,
+        owner_notes: 'PRIVATE_OWNER_NOTE',
+        vendor_contact: 'PRIVATE_VENDOR',
+        owner_update: 'Tap repaired',
+      },
+    });
+    expect(update.status).toBe(200);
+    const tenantView = await home(`/maintenance?tenancy_id=${id}`);
+    expect(JSON.stringify(tenantView.payload)).not.toMatch(
+      /PRIVATE_OWNER_NOTE|PRIVATE_VENDOR|actual_cost|owner_notes/,
+    );
+    const expense = {
+      property_id: property,
+      kind: 'EXPENSE',
+      category: 'MAINTENANCE',
+      amount: 300,
+      record_date: today,
+      maintenance_id: issue.id,
+    };
+    expect(
+      (await op('/finances', { method: 'POST', body: expense })).status,
+    ).toBe(201);
+    expect(
+      (await op('/finances', { method: 'POST', body: expense })).status,
+    ).toBe(409);
+    expect(
+      (
+        await op('/inspections', {
+          method: 'POST',
+          body: {
+            property_id: property,
+            tenancy_id: id,
+            type: 'ROUTINE',
+            inspection_date: today,
+            notes: 'PRIVATE_INSPECTION',
+            checklist: [{ label: 'Walls', condition: 'GOOD' }],
+          },
+        })
+      ).status,
+    ).toBe(201);
+    expect(
+      (
+        await op('/tasks', {
+          method: 'POST',
+          body: {
+            property_id: property,
+            title: 'Renew insurance',
+            due_date: today,
+          },
+        })
+      ).status,
+    ).toBe(201);
+    const upload = new FormData();
+    upload.append('property_id', property);
+    upload.append('category', 'OWNERSHIP');
+    upload.append(
+      'file',
+      new Blob([tinyPng], { type: 'image/png' }),
+      'private-owner.png',
+    );
+    const document = await op('/documents/upload', {
+      method: 'POST',
+      body: upload,
+    });
+    expect(document.status).toBe(201);
+    expect(
+      (
+        await home(
+          `/documents/${document.payload.data.id}/url?tenancy_id=${id}`,
+        )
+      ).status,
+    ).toBe(404);
+    const signed = await op(`/documents/${document.payload.data.id}/url`);
+    expect(signed.status).toBe(200);
+    expect((await fetch(signed.payload.data.url)).status).toBe(200);
+    const convo = await home(`/tenancies/${id}/conversation`, {
+      method: 'POST',
+    });
+    expect(convo.status).toBe(200);
+    expect(
+      (
+        await api(`/conversations/${convo.payload.data.id}/messages`, {
+          token: resident,
+          method: 'POST',
+          body: { content: 'Thank you for the repair' },
+        })
+      ).status,
+    ).toBe(201);
+    await login(page, fixture.people.landlordA);
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(`/owner/properties/${property}`);
+      await expect(
+        page.getByRole('heading', { name: 'Property snapshot' }),
+      ).toBeVisible();
+      await assertNoHorizontalOverflow(page);
+      await assertAccessibleBasics(page);
+    }
+    const accepted = await op('/tenancies', {
+      method: 'POST',
+      body: {
+        property_id: fixture.ids.property,
+        application_id: fixture.ids.applicationA,
+        tenant_name: 'Aisha Task025',
+        start_date: today,
+        monthly_rent: 28000,
+        status: 'ACTIVE',
+      },
+    });
+    expect(accepted.status).toBe(201);
+    expect(accepted.payload.data.tenant_user_id).toBe(
+      fixture.people.tenantA.id,
+    );
+    const latest = await op(`/tenancies/${id}`);
+    expect(
+      (
+        await op(`/tenancies/${id}`, {
+          method: 'PATCH',
+          body: {
+            version: latest.payload.data.version,
+            status: 'ENDED',
+            end_date: today,
+          },
+        })
+      ).status,
+    ).toBe(200);
+    expect((await home(`/rent?tenancy_id=${id}`)).status).toBe(404);
+    expect(
+      (
+        await api(`/conversations/${convo.payload.data.id}/messages`, {
+          token: resident,
+        })
+      ).status,
+    ).toBe(404);
+    const report = await op(`/summary?property_id=${property}`);
+    expect(report.status).toBe(200);
+    expect(report.payload.data.finances).toMatchObject({
+      received: 5000,
+      income: 5000,
+      expenses: 300,
+    });
   });
 
   test('major authenticated layouts remain responsive and free of console/server failures', async ({

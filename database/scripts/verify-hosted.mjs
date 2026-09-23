@@ -19,6 +19,8 @@ const expectedTables = [
   'conversation_participants',
   'conversations',
   'landlord_profiles',
+  'property_manager_profiles',
+  'managed_property_owners',
   'listings',
   'messages',
   'notifications',
@@ -31,7 +33,17 @@ const expectedTables = [
   'tenant_profiles',
   'verification_records',
   'viewings',
-];
+  'property_operational_details',
+  'tenancies',
+  'rent_ledger_entries',
+  'rent_receipts',
+  'maintenance_requests',
+  'maintenance_updates',
+  'property_inspections',
+  'property_documents',
+  'property_financial_records',
+  'property_tasks',
+].sort();
 
 const requiredIndexes = [
   'admin_audit_logs_admin_user_id_created_at_idx',
@@ -152,7 +164,7 @@ try {
         '202608290001',
         '202608290002',
         '202608300001',
-        '202608300002'
+        '202608300002', '202609220001', '202609220002', '202609220003', '202609220004'
       ])
       order by version
     `);
@@ -178,12 +190,16 @@ try {
           '202608290002',
           '202608300001',
           '202608300002',
+          '202609220001',
+          '202609220002',
+          '202609220003',
+          '202609220004',
         ],
       );
     },
   );
 
-  await check('all 21 application tables exist', async () => {
+  await check('all 33 application tables exist', async () => {
     const { rows } = await client.query(
       `
       select tablename
@@ -214,7 +230,7 @@ try {
     `,
       [expectedTables],
     );
-    assert.deepEqual(rows[0], { primary_keys: 21, foreign_keys: 35 });
+    assert.deepEqual(rows[0], { primary_keys: 33, foreign_keys: 67 });
   });
 
   await check(

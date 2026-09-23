@@ -27,12 +27,41 @@ export function createConversationService({
     let counterpartyProfile;
     if (role === 'TENANT' && record.tenant_user_id === userId) {
       counterpartyProfile = record.landlord;
-    } else if (role === 'LANDLORD' && record.landlord_user_id === userId) {
+    } else if (
+      ['LANDLORD', 'AGENT'].includes(role) &&
+      record.landlord_user_id === userId
+    ) {
       counterpartyProfile = record.tenant;
     } else {
       throw notFound();
     }
 
+    if (record.tenancy_id) {
+      const result = serializeConversation(record, {
+        counterpartyProfile,
+        availability: 'UNAVAILABLE',
+        listing: null,
+        viewerId: userId,
+      });
+      result.tenancy_context = {
+        id: record.tenancy.id,
+        property_id: record.tenancy.property.id,
+        status: record.tenancy.status,
+        read_only:
+          ['ENDED', 'CANCELLED'].includes(record.tenancy.status) ||
+          Boolean(
+            record.tenancy.end_date &&
+            record.tenancy.end_date < new Date().toISOString().slice(0, 10),
+          ) ||
+          Boolean(
+            record.tenancy.expected_end_date &&
+            record.tenancy.expected_end_date <
+              new Date().toISOString().slice(0, 10),
+          ),
+        locality: record.tenancy.property.locality,
+      };
+      return result;
+    }
     const publicListing = await publicListings.presentCardForId(
       record.listing_id,
     );

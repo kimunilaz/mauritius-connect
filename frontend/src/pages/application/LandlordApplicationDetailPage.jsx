@@ -22,7 +22,7 @@ function optional(value) {
 
 export default function LandlordApplicationDetailPage() {
   const { applicationId } = useParams();
-  const { session } = useAuth();
+  const { session, profile } = useAuth();
   const [application, setApplication] = useState(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
@@ -130,7 +130,7 @@ export default function LandlordApplicationDetailPage() {
         aria-labelledby="landlord-application-title"
       >
         <h2 id="landlord-application-title">Application details</h2>
-        <p className="status-label">
+        <p className="status-label" data-status={application.status}>
           {applicationStatusLabel(application.status)}
         </p>
         {['SUBMITTED', 'UNDER_REVIEW', 'SHORTLISTED'].includes(
@@ -232,6 +232,20 @@ export default function LandlordApplicationDetailPage() {
         <p>{optional(application.introductory_message)}</p>
       </section>
 
+      {application.status === 'ACCEPTED' && application.listing.property_id && (
+        <section className="management-panel">
+          <h2>Create tenancy</h2>
+          <p>
+            The application is accepted. Confirm lease dates, rent and any
+            deposit to create the ongoing tenancy record.
+          </p>
+          <Link
+            to={`/owner/properties/${application.listing.property_id}?tab=tenancies&application=${application.id}`}
+          >
+            Create tenancy from accepted applicant
+          </Link>
+        </section>
+      )}
       {['SHORTLISTED', 'VIEWING_INVITED', 'VIEWING_COMPLETED'].includes(
         application.status,
       ) ? (
@@ -239,7 +253,7 @@ export default function LandlordApplicationDetailPage() {
           accessToken={session.access_token}
           applicationId={applicationId}
           applicationStatus={application.status}
-          role="LANDLORD"
+          role={profile.role}
           onApplicationChanged={refreshApplication}
         />
       ) : null}

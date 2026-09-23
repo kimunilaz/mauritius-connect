@@ -90,8 +90,7 @@ export default function TenantApplicationListPage() {
     <main className="management-shell tenant-applications-shell">
       <header className="profile-header">
         <div>
-          <p className="eyebrow">Tenant</p>
-          <h1>My applications</h1>
+          <h1>Applications</h1>
           <p>Review drafts and submitted rental applications in one place.</p>
         </div>
         <Link to="/listings">Browse rentals</Link>
@@ -168,7 +167,12 @@ export default function TenantApplicationListPage() {
                   <div className="application-card-summary">
                     <p>
                       <strong>Status:</strong>{' '}
-                      {applicationStatusLabel(application.status)}
+                      <span
+                        className="status-label"
+                        data-status={application.status}
+                      >
+                        {applicationStatusLabel(application.status)}
+                      </span>
                     </p>
                     <p>
                       {application.submitted_at ? 'Submitted' : 'Updated'}{' '}
@@ -182,7 +186,7 @@ export default function TenantApplicationListPage() {
               ) : (
                 <article className="unavailable-saved-card application-unavailable-card">
                   <p className="status-label">Unavailable rental</p>
-                  <h2>
+                  <h2 className="status-label" data-status={application.status}>
                     {applicationStatusLabel(application.status)} application
                   </h2>
                   <p>

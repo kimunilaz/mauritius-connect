@@ -41,7 +41,7 @@ export function createPropertyService({
   now = () => new Date().toISOString(),
 } = {}) {
   async function landlordFor(userId) {
-    return profiles.ensureLandlordProfile(userId);
+    return profiles.ensurePropertyManager(userId);
   }
 
   async function ownedProperty(userId, propertyId) {
@@ -57,7 +57,23 @@ export function createPropertyService({
   return Object.freeze({
     async create(userId, input) {
       const landlordProfile = await landlordFor(userId);
+      if (
+        (landlordProfile.role === 'AGENT') !==
+        Boolean(input.managed_owner_id)
+      ) {
+        throw new AppError({
+          statusCode: 422,
+          code: 'INVALID_OWNER_CONTEXT',
+          message:
+            landlordProfile.role === 'AGENT'
+              ? 'Select an active property owner.'
+              : 'Self-managed properties do not require an owner record.',
+        });
+      }
       return properties.create(landlordProfile.id, {
+        ...(input.managed_owner_id
+          ? { managed_owner_id: input.managed_owner_id }
+          : {}),
         ...allowlistedFields(input),
         furnished: input.furnished ?? false,
         parking_spaces: input.parking_spaces ?? 0,

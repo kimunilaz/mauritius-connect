@@ -1,3 +1,8 @@
+import { createManagedOwnerRouter } from './managedOwnerRoutes.js';
+import {
+  createOwnerOperationRouter,
+  createTenantOperationRouter,
+} from './operationRoutes.js';
 import { Router } from 'express';
 import { createAuthRouter } from './authRoutes.js';
 import healthRouter from './healthRoutes.js';
@@ -49,6 +54,7 @@ import {
   createVerificationRouter,
 } from './verificationRoutes.js';
 import { createAdminToolRouter } from './adminToolRoutes.js';
+import { createOverviewRouter } from './overviewRoutes.js';
 
 export function createApiRouter({
   authService,
@@ -75,6 +81,13 @@ export function createApiRouter({
   const apiRouter = Router();
 
   apiRouter.use('/health', healthRouter);
+  apiRouter.use('/agent/owners', createManagedOwnerRouter(authService));
+  apiRouter.use(
+    '/landlord/operations',
+    createOwnerOperationRouter(authService),
+  );
+  apiRouter.use('/tenant/operations', createTenantOperationRouter(authService));
+  apiRouter.use('/overview', createOverviewRouter(authService));
   apiRouter.use('/auth', createAuthRouter(authService));
   apiRouter.use(
     '/profile',

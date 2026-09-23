@@ -1,4 +1,36 @@
-# Mauritius Rental Platform — API Specification
+# Asserta — API Specification
+
+## TASK-032 current scope
+
+TASK-032: /api/v1/agent/owners is AGENT-only: GET directory (search, archived, page, limit); POST create; GET/PATCH /:id; POST /:id/archive. PATCH and archive require version. Unrelated records return 404, wrong roles 403, invalid input 422, stale changes 409. Agent property POST requires managed_owner_id; landlord POST rejects it. Shared property/operation reports accept optional owner_id, always scoped to the authenticated manager. Public listing and tenant DTOs omit client records.
+
+
+## TASK-031 operations contract
+
+All endpoints require an ACTIVE profile. Owner base: `/api/v1/landlord/operations` (LANDLORD only). Tenant base: `/api/v1/tenant/operations` (TENANT only). ADMIN gains no automatic access to private owner operations.
+
+Owner endpoints:
+
+- `GET /summary`: bounded portfolio/attention/upcoming/activity/tenancy history and exact financial totals. Filters: property_id, occupancy, location, from, to, page, limit.
+- `GET /:domain`, `GET /:domain/:id`, `POST /:domain`, `PATCH /:domain/:id`: details, tenancies, rent, maintenance, inspections, finances, tasks, documents. Document creation instead uses multipart upload. Every PATCH requires the current positive integer version; stale changes return 409. Historical financial amounts cannot be overwritten.
+- `POST /rent/:id/receipts`: amount, received_on, optional reference, UUID request_key. Offline records only, transactional and idempotent.
+- `POST /tenancies/:id/invitation`: one-use connection code for an unlinked eligible tenancy. Only a hash is stored. Owner shares it privately.
+- `POST /tenancies/:id/conversation`: reuse/create tenancy conversation.
+- `GET /leasing` (optional property_id) and `/properties/:propertyId/leasing`: paginated listings/applications/viewings and exact counts, excluding draft applications.
+- `POST /documents/upload`: multipart file and strict metadata; PDF/JPEG/PNG/WebP, 10 MiB maximum. Default private. Optional sharing names one same-property tenancy. `PATCH /documents/:id` accepts archived true/false with version.
+- `GET /documents/:id/url`: authorized download URL lasting 60 seconds.
+
+Tenant endpoints:
+
+- `GET /home`: eligible account-linked tenancies and safe property context.
+- `POST /claim`: owner-issued 64-character connection code; active tenant only, one use.
+- `GET /rent`, `/maintenance`, `/documents`: required tenancy_id, page/limit; explicit safe DTOs.
+- `POST /maintenance`: current ACTIVE/ENDING tenancy, property_id, tenancy_id, title, description, category. Actor/status/priority derived server-side.
+- `POST /documents/upload`: current-tenancy maintenance photos only, property_id/tenancy_id/maintenance_id/file; no arbitrary private metadata.
+- `GET /documents/:id/url?tenancy_id=...`: explicitly shared and unarchived documents only.
+- `POST /tenancies/:id/conversation`: same message engine and tenancy-derived access.
+
+Lists use default 20/max 100 with exact totals; property_id, tenancy_id, status and applicable priority/from/to filters. Rent status is derived before pagination. Receipt displays are capped at latest 100 per charge; monetary totals always aggregate every receipt. Owner relation pickers show up to 100 records. Validation fails closed (422); inaccessible IDs are 404; state/version conflicts are 409. Private object paths, costs, notes, inspection information and financial records never enter public listing DTOs.
 
 ## Verification
 

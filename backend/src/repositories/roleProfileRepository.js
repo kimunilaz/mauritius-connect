@@ -116,3 +116,25 @@ export const preferredLocationRepository = {
     return Boolean(data);
   },
 };
+
+export const propertyManagerRepository = {
+  async findByUserId(userId) {
+    const { data, error } = await getPrivilegedSupabaseClient()
+      .from('property_manager_profiles')
+      .select('id,user_id')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (error) throw repositoryError(error, 'READ_FAILED');
+    return data;
+  },
+
+  async create(userId) {
+    const { data, error } = await getPrivilegedSupabaseClient()
+      .from('property_manager_profiles')
+      .insert({ user_id: userId })
+      .select('id,user_id')
+      .single();
+    if (error || !data) throw repositoryError(error, 'WRITE_FAILED');
+    return data;
+  },
+};

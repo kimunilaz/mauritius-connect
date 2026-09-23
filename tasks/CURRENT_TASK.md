@@ -1,731 +1,1324 @@
-# TASK-026 — Deployment & Private-Beta Readiness
+# TASK-032 — Agent Workspace & Managed Property Owners
 
 ## Status
 
-IN PROGRESS — awaiting production-provider authorization and login
+IN PROGRESS — local implementation and verification; hosted environment authorization pending.
 
 ## Priority
 
-P0 — Release
+P0 — Core User Model
 
 ## Objective
 
-Prepare and deploy the completed prototype for a controlled private beta.
+Add first-class support for PROPERTY AGENTS using Asserta.
 
-The feature set remains FROZEN.
+Agents should be able to use essentially the same property-management workspace as property owners, while gaining one additional capability:
 
-This task covers:
+AGENTS MANAGE PROPERTIES ON BEHALF OF PROPERTY OWNERS.
 
-- production-ready environment configuration
-- frontend deployment
-- backend deployment
-- Supabase production configuration
-- Auth redirect configuration
-- production CORS
-- health checks
-- deployment smoke testing
-- release/rollback documentation
-- private-beta operational checklist
+An agent therefore needs to:
 
-Do NOT implement new product functionality.
+- maintain records of the property owners they represent
+- attach every managed property to the appropriate owner
+- view properties grouped/filterable by owner
+- operate the normal property-management, leasing and operational workflows for those properties
+
+Do NOT build a completely separate duplicate product for agents.
+
+The landlord/owner and agent experiences should share the same property-management architecture wherever possible.
 
 ---
 
-# 1. Required Reading
+# 1. Core Product Model
 
-Read all governing documentation and inspect TASK-000 through TASK-025.
+Use this principle:
 
-Especially:
+PROPERTY OWNER:
 
-docs/ARCHITECTURE.md
-docs/SECURITY.md
-docs/TESTING.md
-docs/DEVELOPMENT_RULES.md
-README.md
+User
+→ Own properties
+→ Manage those properties
 
-Review all environment-variable usage before deployment.
+AGENT:
 
----
+User
+→ Manage owner/client records
+→ Owner/client records have properties
+→ Agent manages those properties
 
-# 2. Feature Freeze
-
-Allowed:
-
-- deployment configuration
-- environment fixes
-- production-only configuration fixes
-- deployment bug fixes
-- broken URL/path fixes
-- CORS/Auth callback fixes
-- health/readiness fixes
-- documentation
-- release scripts/checks
-
-Not allowed:
-
-- new rental features
-- redesigns
-- new workflow states
-- analytics product features
-- payments
-- contracts
-- AI recommendations
+The property-management experience after that should be largely shared.
 
 ---
 
-# 3. Deployment Architecture
+# 2. Architecture Principle
 
-Target architecture:
+DO NOT copy/paste the existing landlord workspace into a new agent workspace.
 
-Frontend:
-Vercel
+Instead:
 
-Backend:
-use the existing documented supported platform selected for this repository
-(Railway, Render, or Fly.io)
+- reuse shared layouts
+- reuse shared property components
+- reuse listing workflows
+- reuse applications
+- reuse viewings
+- reuse maintenance
+- reuse finances
+- reuse documents
+- reuse inspections
+- reuse tasks
+- reuse reports
+- reuse messages
 
-Database/Auth/Storage:
-Supabase
+Introduce role-aware differences only where needed.
 
-Do not introduce new infrastructure unnecessarily.
+Preferred concept:
 
----
+Shared Owner Operations UI
++
+Role-specific permissions/navigation
 
-# 4. Environment Separation
+LANDLORD:
+manages own portfolio
 
-Do not expose development secrets in production.
+AGENT:
+manages portfolio on behalf of multiple owners
 
-Ensure clear separation between:
-
-development
-test/integration
-production
-
-Frontend production variables may include only browser-safe values such as:
-
-VITE_SUPABASE_URL
-VITE_SUPABASE_PUBLISHABLE_KEY
-VITE_API_BASE_URL
-
-Backend production variables may include:
-
-SUPABASE_URL
-SUPABASE_PUBLISHABLE_KEY
-SUPABASE_SECRET_KEY
-DATABASE_URL
-frontend/CORS origin configuration
-environment/runtime settings
-
-Never expose backend secrets through VITE variables.
+This should reduce implementation complexity and future maintenance.
 
 ---
 
-# 5. Secret Audit
+# 3. New Role
 
-Before deployment verify:
+Introduce:
 
-- no `.env` files tracked
-- no secret keys in source
-- no DB credentials in frontend
-- no credentials in build output
-- no credentials in deployment documentation
-- no secrets printed during deployment
+AGENT
 
-Run:
+alongside the existing roles:
 
-npm run security:check
+TENANT
+LANDLORD
+ADMIN
 
-before release.
+Do not rename existing LANDLORD backend role unless separately required.
 
----
-
-# 6. Production Supabase
-
-Prefer a production/private-beta Supabase project isolated from destructive development testing.
-
-Do not reset or destroy the existing development project.
-
-If a separate production project is used:
-
-apply all migrations forward-only using the established migration workflow.
-
-Verify the complete migration ledger.
-
-Do not manually recreate tables through the dashboard.
+AGENT must have its own authorization behavior.
 
 ---
 
-# 7. Migration Gate
+# 4. Agency Boundary
 
-Before production deployment confirm:
+TASK-032 supports an individual AGENT account.
 
-all TASK-001 through TASK-025 migrations are present and ordered correctly.
+Do NOT yet implement a full agency organization system such as:
 
-Run database/catalog verification.
+- agency companies
+- agency team members
+- employee invitations
+- branch offices
+- shared agency accounts
+- team roles
+- manager/agent permissions
+- commission splits
+- agency billing
+- owner portals
 
-Production schema must match the repository migration ledger.
+These can be introduced later.
 
-No migration rewriting.
+For now:
 
-No database reset.
+one authenticated AGENT
+→ manages their own portfolio of owner clients and properties.
 
----
-
-# 8. Supabase Storage
-
-Verify required buckets exist/configure reproducibly:
-
-property-images
-verification-evidence
-
-Confirm:
-
-- private configuration
-- expected file limits
-- browser direct restrictions
-- signed/backend-mediated access behavior
-
-Verification evidence must remain private.
+This provides the foundation for future agency/team functionality.
 
 ---
 
-# 9. Supabase Auth URLs
+# 5. Agent Workspace
 
-Configure production:
+The AGENT workspace should use the same general shell and information architecture as the property-owner workspace.
 
-Site URL
-Redirect URLs
+Recommended navigation:
 
-for the deployed frontend.
+Overview
 
-Ensure these flows work on production URLs:
+PORTFOLIO
+- Properties
+- Owners
+- Tenancies
 
-registration
-login
-logout
-email confirmation
-forgot password
-reset password
-PKCE callback
+LEASING
+- Listings
+- Applications
+- Viewings
 
-Do not leave production dependent only on localhost callback URLs.
+OPERATIONS
+- Maintenance
+- Inspections
+- Tasks
 
----
+FINANCES
+- Rent ledger
+- Income & expenses
 
-# 10. Production CORS
+RECORDS
+- Documents
+- Messages
+- Reports
 
-Configure the backend allowlist for the actual deployed frontend origin.
+ACCOUNT
+- Verification
+- My profile
 
-Production startup must fail safely if required CORS configuration is absent or invalid.
+The primary addition compared with the property-owner workspace is:
 
-Do not use wildcard `*` for private API access.
-
-Retain localhost development configuration separately.
-
----
-
-# 11. Frontend API Configuration
-
-Production frontend must communicate with the deployed backend using configuration.
-
-Do not hard-code localhost API URLs.
-
-Confirm production build contains the intended backend base URL.
+Owners
 
 ---
 
-# 12. Backend Health
+# 6. Landlord / Owner Workspace
 
-Ensure production exposes:
+Existing LANDLORD users should continue using essentially the same property-management workspace.
 
-GET /api/v1/health
+They should NOT suddenly gain:
 
-Health endpoint should confirm the process is alive without leaking:
+Owners
 
-credentials
-database URLs
-internal configuration
-stack traces
+because they manage their own properties.
 
-Do not expose privileged diagnostics publicly.
+The shared workspace should adapt navigation based on authenticated role.
 
 ---
 
-# 13. Backend Instance Count
+# 7. Owner Client Records
 
-TASK-023 rate limiting is process-local.
+Agents must be able to create property-owner/client records.
 
-For the private beta, deploy the backend in a topology consistent with that limitation.
+Create a first-class managed owner record.
 
-Prefer:
+Suggested fields:
 
-one application instance
+- id
+- agent/user relationship
+- first name
+- last name
+- optional company name
+- phone
+- email
+- optional address
+- optional notes
+- created_at
+- updated_at
+- archived_at where appropriate
 
-unless the rate limiter is intentionally redesigned later.
+Use the clearest schema naming based on existing conventions.
 
-Document this limitation.
+Possible concepts:
 
-Do not add Redis during TASK-026.
+managed_property_owners
+agent_clients
+property_owner_clients
 
----
+Choose one clear name and document it.
 
-# 14. HTTPS
-
-Production frontend and backend must be served via HTTPS.
-
-No mixed-content requests.
-
-Supabase callbacks must use HTTPS production URLs.
-
----
-
-# 15. Backend Production Behavior
-
-Verify:
-
-NODE_ENV=production
-
-Production errors must remain sanitized.
-
-No development stack traces.
-
-Logging must remain metadata-focused and must not log:
-
-tokens
-passwords
-messages
-application answers
-verification evidence
-secret keys
+Do NOT automatically create authentication accounts for these owners.
 
 ---
 
-# 16. Build
+# 8. Authenticated LANDLORD vs Agent Client Owner
 
-Production builds must succeed:
+This distinction is critical.
 
-frontend
-backend startup/runtime
+An existing LANDLORD user:
 
-Run:
+is an authenticated Asserta account managing their own properties.
 
-npm run build
+An agent-managed OWNER record:
 
-No build-breaking warnings/errors.
+is a client/property-owner record belonging to the agent's portfolio.
 
-The existing Vite bundle >500 kB advisory may remain documented as LOW.
+These are NOT automatically the same thing.
 
-Do not expand scope purely to remove that warning.
+Do not silently create:
 
----
+profiles
+auth users
+LANDLORD accounts
 
-# 17. Production Database Verification
+when an agent records a client.
 
-Against the deployment database verify:
-
-migration ledger
-tables
-indexes
-constraints
-RLS
-function grants
-Storage configuration
-
-All privileged SECURITY DEFINER functions must remain service-role-only.
+Future invitation/linking can be a separate task.
 
 ---
 
-# 18. Production Smoke Test
+# 9. Owners Page
 
-After deployment run a bounded production/private-beta smoke test.
+Create an agent-only:
+
+Owners
+
+page.
+
+The agent should be able to see:
+
+- owner name
+- company name where applicable
+- number of properties
+- occupied properties
+- vacant properties
+- relevant outstanding activity
+- contact information where appropriate
+
+Support:
+
+- search
+- create
+- view
+- edit
+- archive
+
+Do not permanently hard-delete owners with property history unless architecture safely allows it.
+
+---
+
+# 10. Add Owner
+
+Provide a clean:
+
+Add property owner
+
+workflow.
+
+Required minimum:
+
+Name
+
+Useful optional information:
+
+Email
+Phone
+Company
+Notes
+
+Do not force unnecessary personal information.
+
+---
+
+# 11. Owner Detail Page
+
+Each owner should have a page such as:
+
+/agent/owners/:ownerId
+
+Show:
+
+Owner details
+
+Portfolio summary
+
+Properties
+
+Tenancies
+
+Outstanding issues
+
+Relevant activity
+
+Documents where owner-specific documents are later supported
+
+The primary purpose is to answer:
+
+"What am I currently managing for this owner?"
+
+---
+
+# 12. Property Creation — Agent
+
+When AGENT creates a property, require:
+
+Property owner
+
+The agent must select an existing owner or create a new owner.
+
+Example:
+
+Property owner
+[ Jean Dupont ▼ ]
+
++ Add new owner
+
+A property managed by an agent must not exist without a clearly identified owner.
+
+---
+
+# 13. Property Creation — LANDLORD
+
+When a LANDLORD creates a property:
+
+do NOT ask them to select an owner.
+
+The owner is themselves.
+
+Keep the current flow simple.
+
+The system should derive this from the authenticated role.
+
+---
+
+# 14. Ownership vs Management
+
+The data model must clearly distinguish:
+
+LEGAL / RECORDED PROPERTY OWNER
+
+from:
+
+PLATFORM USER MANAGING THE PROPERTY
+
+For LANDLORD:
+
+owner = authenticated landlord
+manager = authenticated landlord
+
+For AGENT:
+
+owner = managed owner/client record
+manager = authenticated agent
+
+Do not overload one database column to mean both concepts if that would create ambiguity.
+
+---
+
+# 15. Schema Review First
+
+Before database changes:
+
+inspect the current properties table and existing ownership model.
+
+Determine what the existing:
+
+landlord_id
+owner_id
+user_id
+
+or equivalent currently means.
+
+Do NOT blindly rename or repurpose existing columns.
+
+Produce a short implementation plan before migrations.
+
+---
+
+# 16. Preferred Compatibility Approach
+
+Preserve existing LANDLORD property ownership behavior.
+
+Introduce the minimum additional relationship needed for agent-managed properties.
+
+Possible architecture:
+
+property
+→ managed_by_user_id
+→ owner_client_id
+
+or an equivalent normalized relation.
+
+However:
+
+do not implement this exact structure blindly.
+
+Choose the safest design after inspecting the existing schema.
+
+Existing landlord properties must remain valid without destructive migration.
+
+---
+
+# 17. Property 360 — Agent Context
+
+The existing Property 360 experience should be reused.
+
+For AGENT users, additionally show:
+
+Property owner
+
+Example:
+
+Owner
+Jean Dupont
+
+Provide a link to the owner record.
+
+Do NOT duplicate the entire property page for agents.
+
+---
+
+# 18. Property 360 — LANDLORD Context
+
+LANDLORD users do not need a redundant:
+
+Owner: Yourself
+
+section unless useful.
+
+Keep their experience clean.
+
+---
+
+# 19. Agent Properties Page
+
+Reuse the existing portfolio/property view.
+
+Add agent-specific filtering:
+
+Owner
+
+Example:
+
+All owners
+Jean Dupont
+ABC Holdings
+Marie Laurent
+
+Allow properties to be grouped or filtered by owner.
+
+Do not create a separate completely different property table.
+
+---
+
+# 20. Agent Overview
+
+Reuse the property-owner portfolio dashboard.
+
+Agent Overview should answer:
+
+- How many owners do I manage?
+- How many properties do I manage?
+- How many are occupied?
+- How many are vacant?
+- Which applications need attention?
+- Which maintenance issues are open?
+- Is any rent overdue?
+- Which owner/property needs attention next?
+
+Add an agent-specific summary:
+
+Owners
+12
+
+Do not redesign the dashboard from scratch.
+
+---
+
+# 21. Needs Attention
+
+Use the same operational attention engine where possible.
+
+Agent items should include owner context.
+
+Example:
+
+Maintenance request
+Apartment 4 — Jean Dupont
+
+Rent overdue
+Rose Hill Flat — ABC Holdings
+
+3 applications awaiting review
+Moka Studio — Marie Laurent
+
+The owner name provides useful context when managing multiple clients.
+
+---
+
+# 22. Listings
+
+Agents should use the same listing workflow as property owners.
+
+Listing creation must derive the property and therefore its recorded owner.
+
+Do not require the agent to repeatedly choose the owner once the property has already been attached correctly.
+
+---
+
+# 23. Applications
+
+Reuse the current application pipeline.
+
+Agent sees applications only for properties they are authorized to manage.
+
+Do not expose applications belonging to:
+
+- another agent
+- unrelated landlords
+- unrelated properties
+
+---
+
+# 24. Viewings
+
+Reuse the existing viewing system.
+
+Agent acts as the property manager/operator for properties they manage.
+
+No separate agent-specific viewing engine.
+
+---
+
+# 25. Tenancies
+
+Reuse the tenancy system.
+
+Tenancy remains linked to:
+
+property
+tenant
+
+Agent authority comes from their management relationship to the property.
+
+Do not duplicate tenancy tables for agent properties.
+
+---
+
+# 26. Maintenance
+
+Reuse maintenance functionality.
+
+An agent can manage maintenance for properties in their portfolio.
+
+Maintenance views should show useful owner context.
+
+Example:
+
+Owner
+Jean Dupont
+
+Property
+12 Example Street
+
+Do not expose another agent's maintenance data.
+
+---
+
+# 27. Inspections
+
+Reuse inspection functionality.
+
+Agent authorization must derive from management of the property.
+
+No duplicate inspection model.
+
+---
+
+# 28. Rent Ledger / Finances
+
+Reuse the existing property financial record functionality.
+
+Agent can record/manage financial records for properties they manage.
+
+Financial views should support filtering by:
+
+Owner
+Property
+Period
+
+Example:
+
+Owner:
+ABC Holdings
+
+Properties:
+5
+
+Recorded rent:
+...
+
+Do NOT introduce:
+
+agency commissions
+management fees
+trust accounting
+owner disbursements
+
+in this task.
+
+Those require separate financial design.
+
+---
+
+# 29. Reports
+
+Reuse existing property/portfolio reports.
+
+Add agent filters where useful:
+
+Owner
+Property
+Date range
+
+Potential owner-level view:
+
+Jean Dupont
+
+Properties: 3
+Occupied: 2
+Vacant: 1
+Recorded rent: ...
+Expenses: ...
+Open maintenance: ...
+
+Do not add accounting claims beyond the data recorded in Asserta.
+
+---
+
+# 30. Documents
+
+Reuse private property-document infrastructure.
+
+Agent access derives from property management authorization.
+
+Owner/client records may have basic owner-specific documents only if there is a clear requirement and safe architecture.
+
+Do not expand document scope unnecessarily.
+
+---
+
+# 31. Messages
+
+Reuse existing messaging.
+
+Where appropriate, show property and owner context to AGENT.
+
+Do not automatically create conversations between agent and recorded owner clients in TASK-032.
+
+Owner-client communication can be added separately if required.
+
+---
+
+# 32. Notifications
+
+Reuse the existing notification system.
+
+Agent receives the same relevant operational notifications for properties they manage.
+
+Example:
+
+New application
+Maintenance request
+Viewing response
+Task due
+Rent overdue
+
+Include property context.
+
+Do not create duplicate notification logic where shared event handling is possible.
+
+---
+
+# 33. Verification
+
+Decide carefully how existing landlord/property verification interacts with AGENT.
+
+Do NOT automatically mark an agent as verified property owner.
+
+Where verification currently proves:
+
+PROPERTY_AUTHORITY
+
+it may be appropriate for an agent to demonstrate authority to manage/list the property.
+
+Preserve existing security meaning.
+
+Do not weaken verification rules merely to accommodate AGENT.
+
+Document any changes.
+
+---
+
+# 34. Public Listings
+
+Public users should NOT need to know whether a property is managed by:
+
+owner
+agent
+
+unless Asserta deliberately exposes that information.
+
+Do not expose private owner/client identity through public serializers.
+
+Public listing privacy must remain intact.
+
+---
+
+# 35. Tenant Experience
+
+TENANT functionality should remain essentially unchanged.
+
+A tenant may interact with:
+
+the property/listing
+
+and the authorized property manager.
+
+Do not expose the agent's owner-client records.
+
+---
+
+# 36. Agent Registration
+
+Add AGENT as an available account type where appropriate.
+
+Potential onboarding choice:
+
+I am looking for a rental
+→ TENANT
+
+I manage my own properties
+→ LANDLORD
+
+I manage properties for owners
+→ AGENT
+
+Use natural wording.
+
+Do not expose raw enum names as the primary UX.
+
+---
+
+# 37. Agent Onboarding
+
+After AGENT registration:
+
+guide them toward:
+
+1. Add a property owner
+2. Add a property
+3. Attach the property to that owner
+4. Record whether it is occupied or available
+5. Continue normal property-management workflow
+
+Do not require them to create a listing immediately.
+
+---
+
+# 38. LANDLORD Onboarding
+
+LANDLORD onboarding remains:
+
+1. Add your property
+2. Set its operational state
+3. Add existing tenancy or create listing where appropriate
+
+Do not make landlords create themselves as owner records.
+
+---
+
+# 39. Shared Frontend Architecture
+
+Refactor where necessary so role-specific workspaces reuse components.
+
+Potential shared pieces:
+
+OwnerWorkspaceLayout
+PortfolioOverview
+PropertyList
+PropertyDetail
+MaintenanceViews
+FinancialViews
+InspectionViews
+TaskViews
+Reports
+
+Role-aware additions can be injected/configured.
+
+Do not create:
+
+AgentPropertyList
+LandlordPropertyList
+
+with mostly identical copied code if one reusable component can serve both.
+
+---
+
+# 40. Route Strategy
+
+Use the safest existing routing architecture.
+
+Do not duplicate dozens of identical pages under:
+
+/landlord/...
+
+and:
+
+/agent/...
+
+unless route compatibility requires it.
+
+Consider shared internal components with role-aware route wrappers.
+
+Preserve existing landlord URLs where necessary.
+
+Document route choices.
+
+---
+
+# 41. Backend Authorization
+
+Every AGENT-owned request must verify server-side that:
+
+authenticated agent
+→ manages the requested property
+
+Do not trust property IDs from the browser.
+
+Similarly:
+
+authenticated agent
+→ owns/manages the requested owner-client record.
+
+An agent must never access another agent's clients.
+
+---
+
+# 42. Authorization Helper
+
+Prefer one reusable authorization concept such as:
+
+canManageProperty(user, property)
+
+that safely supports:
+
+LANDLORD
+AGENT
+
+rather than duplicating authorization checks across every service.
+
+Exact implementation should follow existing repository architecture.
+
+ADMIN behavior remains separately privileged.
+
+---
+
+# 43. RLS
+
+Maintain deny-by-default RLS.
+
+New agent/client relations must be protected.
+
+AGENT may access:
+
+- their own owner/client records
+- properties they manage
+- operational records linked to those properties
+
+AGENT may NOT access:
+
+- another agent's clients
+- another agent's managed properties
+- unrelated landlord properties
+
+LANDLORD permissions must not broaden accidentally.
+
+---
+
+# 44. Existing Data
+
+Existing LANDLORD properties must continue working.
+
+Do not require migration of every landlord into owner-client records.
+
+Do not reset Supabase.
+
+Use forward-only migration.
+
+Existing workflows must remain compatible.
+
+---
+
+# 45. ADMIN
+
+ADMIN should be able to identify:
+
+Account role: Agent
+
+where user administration currently shows role.
+
+Do not build a full agency-management ADMIN module in this task.
+
+ADMIN's existing moderation/security powers remain.
+
+---
+
+# 46. Search / Filters
+
+Agent-facing operational areas should support owner filtering where it meaningfully improves management.
 
 At minimum:
 
-public homepage/listings load
+Properties
+Finances
+Reports
 
-login works
+Potentially:
 
-protected route works
+Maintenance
+Tenancies
 
-TENANT can browse listing
-
-LANDLORD can access own dashboard
-
-ADMIN can access ADMIN area
-
-backend health works
-
-frontend reaches backend
-
-Supabase Auth session works
-
-No CORS failure
-
-No obvious browser console error
-
-Do not create destructive workflow data unless using controlled beta fixtures.
+Do not add owner filters everywhere mechanically.
 
 ---
 
-# 19. Critical Workflow Smoke
+# 47. Owner Archive Rules
 
-Using controlled production/private-beta fixtures where safe, verify representative:
+Do not allow an owner/client to be removed in a way that destroys:
 
-listing access
-application creation
-message/conversation access
+property
+tenancy
+financial
+maintenance
+historical
 
-Do not rerun destructive concurrency/load tests against production.
+records.
 
-Full heavy verification remains against the development/QA environment.
-
----
-
-# 20. Security Production Gate
-
-Run:
-
-npm run security:check
-
-Confirm:
-
-zero HIGH/CRITICAL production vulnerabilities
-
-no tracked secrets
-
-no unexpected privileged function grants
-
-no public verification evidence
-
-no permissive RLS drift
+Prefer archive/inactive behavior for clients with historical records.
 
 ---
 
-# 21. Rate Limit Smoke
+# 48. Property Transfer Between Owners
 
-Verify normal production usage is not incorrectly rate-limited.
+Do NOT implement arbitrary property-owner reassignment without considering history.
 
-Do not intentionally flood the deployed service.
+If reassignment is allowed:
 
-Confirm expected 429 behavior using bounded controlled requests if safe.
+preserve audit/history.
+
+If this is complex, defer full ownership transfer to another task.
+
+Basic correction before activity exists may be allowed safely.
+
+Document behavior.
 
 ---
 
-# 22. Error Smoke
+# 49. Property Transfer Between Agents
 
-Verify representative invalid request produces:
+Do NOT implement agent-to-agent portfolio transfer in TASK-032.
 
-safe product error
+This belongs to future agency/team functionality.
+
+---
+
+# 50. No Full Agency Platform Yet
+
+Explicitly exclude:
+
+- multiple agents under one agency
+- agency administrator
+- employee invites
+- team permissions
+- shared portfolios
+- commission management
+- management-fee calculations
+- owner payouts
+- trust accounting
+- client owner portal
+- lead routing
+- agent performance tracking
+
+TASK-032 creates the architectural foundation for these later.
+
+---
+
+# 51. UX Language
+
+For AGENT:
+
+use:
+
+Owners
+Properties
+Tenancies
+Listings
+Applications
+Viewings
+Maintenance
+Finances
+Reports
+
+Avoid:
+
+Landlords
+
+as the primary client-management label if:
+
+Owners
+
+is clearer to users.
+
+Internally, existing LANDLORD role naming may remain unchanged.
+
+---
+
+# 52. Product Test — LANDLORD
+
+A landlord should still experience:
+
+"My properties."
+
+They should not see unnecessary agency concepts.
+
+---
+
+# 53. Product Test — AGENT
+
+An agent should experience:
+
+"These are the owners I work with, and these are the properties I manage for them."
+
+They should not have to mentally pretend every property belongs to themselves.
+
+---
+
+# 54. Critical Architecture Test
+
+If a new property-management feature is later added, for example:
+
+Insurance records
+
+we should ideally implement:
+
+one Property Insurance feature
+
+that works for both:
+
+LANDLORD-owned property
+AGENT-managed property
 
 not:
 
-stack trace
-PostgreSQL error
-filesystem path
-Supabase internal details
+Landlord Insurance
+Agent Insurance
+
+separately.
+
+TASK-032 must establish this reuse principle.
 
 ---
 
-# 23. ADMIN Bootstrap
+# 55. Testing — Role Isolation
 
-Ensure the private-beta environment has at least one controlled ACTIVE ADMIN account.
+Test:
 
-Do not make ADMIN publicly self-registerable.
+LANDLORD cannot access AGENT client records.
 
-Do not commit ADMIN credentials.
+AGENT A cannot access AGENT B owner records.
 
-Document the secure manual bootstrap process without passwords.
+AGENT A cannot access AGENT B properties.
 
----
+AGENT cannot access unrelated LANDLORD property.
 
-# 24. Beta Test Accounts
+LANDLORD still accesses own property.
 
-If controlled LANDLORD/TENANT accounts are needed for smoke testing:
-
-create them through normal Auth flows or approved operational tooling.
-
-Never commit test credentials.
-
-Clearly distinguish controlled test records from real beta users.
+ADMIN behavior remains valid.
 
 ---
 
-# 25. Private-Beta Access
+# 56. Testing — Property Creation
 
-This is a controlled beta.
+Verify:
 
-Do not add a large new invitation system.
+LANDLORD:
+creates property without owner selector.
 
-Document how initial participants will be onboarded.
+AGENT:
+must select/create owner when creating property.
 
-Use existing registration/account controls unless a manual operational process is needed.
+AGENT:
+cannot attach property to another agent's owner record.
 
----
-
-# 26. Operational Checklist
-
-Create a concise private-beta checklist covering:
-
-daily health check
-Supabase availability
-backend availability
-frontend availability
-new reports
-pending listing reviews
-pending verifications
-suspended accounts
-user-reported defects
-
-Do not build an operations dashboard.
+Owner relationship persists correctly.
 
 ---
 
-# 27. Incident Basics
+# 57. Testing — Existing Workflows
 
-Document what to do if:
+For agent-managed property verify:
 
-backend unavailable
-frontend unavailable
-Supabase unavailable
-secret suspected exposed
-abusive account identified
-incorrect listing becomes public
+property
+listing
+application
+viewing
+acceptance
+tenancy
+maintenance
+inspection
+finances
+documents
+tasks
+messages
+notifications
+reports
 
-Keep this as operational documentation.
-
-Do not introduce full incident-management infrastructure.
-
----
-
-# 28. Rollback Plan
-
-Document deployment rollback.
-
-At minimum:
-
-frontend rollback/redeploy
-backend rollback/redeploy
-application commit rollback strategy
-
-Database migrations remain forward-only.
-
-Do NOT recommend destructive database rollback/reset.
-
-If a migration causes a defect:
-
-create a forward corrective migration.
+operate through the same underlying workflows where implemented.
 
 ---
 
-# 29. Release Identification
+# 58. Responsive UX
 
-Document the Git commit/tag deployed to private beta.
+Verify AGENT workspace on:
 
-Create a release tag if consistent with repository workflow, for example:
+desktop
+tablet
+mobile
 
-private-beta-v0.1.0
+Owner selector/filter must remain usable.
 
-Do not tag until all release gates pass.
-
----
-
-# 30. Documentation
-
-Update:
-
-README.md
-
-with production-safe setup/deployment overview.
-
-Create/update:
-
-docs/DEPLOYMENT.md
-
-Include:
-
-architecture
-environment-variable names without values
-frontend deployment
-backend deployment
-Supabase migration process
-Auth URLs
-CORS
-Storage
-health check
-rollback
-known limitations
-
-Create/update:
-
-docs/PRIVATE_BETA_CHECKLIST.md
-
-Do not include credentials.
+Do not overload mobile navigation with unnecessary nested controls.
 
 ---
 
-# 31. Known Limitations
+# 59. Database Migration
 
-Document clearly:
+Any required migration must be:
 
-- process-local rate limiting
-- no payments
-- no lease generation
-- no digital signatures
-- no escrow
-- manual verification
-- no MFA
-- no external penetration test
-- no email/SMS/push notifications
-- Vite bundle-size advisory
-- private-beta status
+forward-only
+non-destructive
+compatible with existing landlord data
 
-Do not hide these limitations.
+Do NOT:
+
+reset DB
+rewrite migration history
+delete existing properties
+
+Report migrations before hosted application if authorization is required.
 
 ---
 
-# 32. Release Gate
+# 60. Required Verification
 
-Before declaring private-beta ready:
+Run:
 
 npm run lint
 npm run test
-npm run test:e2e
 npm run build
 npm run format:check
 npm run security:check
 git diff --check
 
-Database verification must pass.
+Run DB checks and role/privacy integration tests.
 
-Hosted development regression must remain healthy.
+Run appropriate browser/E2E tests for:
 
-Production/private-beta smoke checks must pass.
-
----
-
-# 33. No Destructive Production Operations
-
-Never:
-
-db reset
-drop production schema
-delete hosted user data
-rewrite migration history
-run destructive fixture cleanup against real users
-
-Forward-only corrections only.
+LANDLORD
+AGENT
+TENANT
+ADMIN
 
 ---
 
-# 34. Acceptance Criteria
+# 61. Acceptance Criteria
 
-TASK-026 is complete only when:
+TASK-032 is complete only when:
 
-- [ ] Frontend is deployed over HTTPS.
-- [ ] Backend is deployed over HTTPS.
-- [ ] Frontend communicates with backend.
-- [ ] Production CORS is correct.
-- [ ] Production environment variables configured securely.
-- [ ] No backend secret exposed to frontend.
-- [ ] Supabase production/private-beta project is configured.
-- [ ] All migrations applied forward-only.
-- [ ] Database verification passes.
-- [ ] RLS/grants remain correct.
-- [ ] Private Storage remains private.
-- [ ] Production Auth URLs work.
-- [ ] Login/session flow works.
-- [ ] Password reset callback works or is verified.
-- [ ] Health endpoint works.
-- [ ] ADMIN access works.
-- [ ] Normal tenant/landlord access works.
-- [ ] Production errors are sanitized.
-- [ ] Production logging remains safe.
-- [ ] Process-local rate-limit deployment limitation documented.
-- [ ] Security check passes.
-- [ ] E2E suite remains passing in QA environment.
-- [ ] Production smoke tests pass.
-- [ ] Rollback process documented.
-- [ ] Operational checklist documented.
-- [ ] Known beta limitations documented.
-- [ ] No destructive production database action occurred.
-- [ ] No secrets committed or exposed.
-- [ ] Release commit/tag identified.
+- [ ] AGENT is a supported authenticated role.
+- [ ] AGENT workspace reuses the property-owner workspace architecture.
+- [ ] Agent UI is not implemented as a copied landlord application.
+- [ ] Agent sidebar contains Owners.
+- [ ] LANDLORD sidebar does not unnecessarily contain Owners.
+- [ ] Agent can create owner/client records.
+- [ ] Agent can edit/view/archive their owner/client records safely.
+- [ ] Agent can create property and attach it to an owner.
+- [ ] Property clearly distinguishes manager from recorded owner.
+- [ ] Existing landlord-owned properties continue working.
+- [ ] Landlords do not need owner/client records.
+- [ ] Agent property lists can be filtered by owner.
+- [ ] Property 360 shows owner context for agent-managed properties.
+- [ ] Agent Overview includes owner/portfolio context.
+- [ ] Existing operational modules are reused.
+- [ ] Tenant private/public behavior remains unchanged.
+- [ ] Public APIs do not expose private owner records.
+- [ ] Agent A cannot access Agent B data.
+- [ ] Agent cannot access unrelated landlord data.
+- [ ] LANDLORD permissions are not broadened.
+- [ ] RLS remains deny-by-default.
+- [ ] No full agency-team system was introduced.
+- [ ] Existing tests remain healthy.
+- [ ] New role-isolation tests pass.
+- [ ] Build passes.
+- [ ] Security checks pass.
 
 ---
 
-# 35. Completion Report
+# 62. Completion Report
 
 Report:
 
-## Summary
+## Architecture
 
-## Deployment Architecture
+Explain how LANDLORD and AGENT reuse the same property-management product.
 
-## Frontend Deployment
+## Role Model
 
-Include deployed environment/domain but no secrets.
+Explain:
 
-## Backend Deployment
+TENANT
+LANDLORD
+AGENT
+ADMIN
 
-Include deployed environment/domain but no secrets.
+## Managed Owners
 
-## Supabase Environment
+Explain the client-owner data model.
 
-Explain migration/Auth/Storage configuration.
+## Property Ownership vs Management
 
-## Environment Variables
+Explain how the system distinguishes:
 
-List names only.
+property owner
+property manager
 
-Do not report values.
+## Agent Workspace
 
-## CORS
+Document navigation and agent-specific functionality.
 
-## Authentication Smoke
+## Shared Workspace
 
-## Production Smoke Tests
+List the modules reused between LANDLORD and AGENT.
 
-## Database Verification
+## Property Creation
 
-## Security Gate
+Explain different landlord and agent flows.
 
-## Operational Readiness
+## Authorization
 
-## Rollback Plan
+Document agent/property/client authorization.
 
-## Release Tag / Commit
+## RLS
 
-## Known Limitations
+Document policies and privacy boundaries.
 
-## Tests
+## Existing Data Compatibility
 
-Unit/integration:
-E2E:
-Hosted QA:
-Production smoke:
-Failed:
-Skipped:
+Explain how existing LANDLORD property data remained intact.
 
-## Final Verification
+## Deferred Agency Features
 
-npm run lint
-npm run test
-npm run test:e2e
-npm run build
-npm run format:check
-npm run security:check
-git diff --check
+Explicitly list:
 
-## Private-Beta Verdict
+team accounts
+commissions
+management fees
+owner portal
+agency administration
+shared portfolio
 
-State one:
+as future work.
 
-READY FOR PRIVATE BETA
+## Database
 
-or
+List migrations/tables/indexes/functions.
 
-NOT READY FOR PRIVATE BETA
+## Verification
 
-If not ready, list exact blockers.
+Report all automated, DB, security and browser/E2E checks.
 
 Then stop.

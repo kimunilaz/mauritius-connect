@@ -1,3 +1,4 @@
+import { statusLabel } from '../../utils/status.js';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -77,11 +78,13 @@ export default function AdminUserDetailPage() {
       ) : null}
       {!loading && user ? (
         <article className="management-panel">
-          <p className="eyebrow">{user.role}</p>
+          <p className="eyebrow">{statusLabel(user.role)}</p>
           <h1>
             {user.first_name} {user.last_name}
           </h1>
-          <p>Account status: {user.account_status}</p>
+          <p className="status-label" data-status={user.account_status}>
+            Account status: {statusLabel(user.account_status)}
+          </p>
           {user.account_status === 'ACTIVE' ? (
             <button
               className="danger-button"

@@ -170,7 +170,7 @@ export default function TenantProfilePage() {
   if (loading) {
     return (
       <main className="profile-shell" aria-live="polite">
-        Loading your tenant profile...
+        Loading your profile...
       </main>
     );
   }
@@ -179,8 +179,13 @@ export default function TenantProfilePage() {
     <main className="profile-shell">
       <header className="profile-header">
         <div>
-          <p className="eyebrow">Tenant profile</p>
-          <h1>Your rental profile</h1>
+          <h1>My profile</h1>
+          <p>
+            Tenant account:{' '}
+            {profile.account_status
+              ?.toLowerCase()
+              .replace(/^./, (letter) => letter.toUpperCase())}
+          </p>
         </div>
         <Link to="/account">Back to account</Link>
       </header>
@@ -349,7 +354,7 @@ export default function TenantProfilePage() {
                 </span>
                 <button
                   type="button"
-                  className="text-button"
+                  className="text-button text-button-danger"
                   disabled={busy === item.id}
                   onClick={() => removeLocation(item.id)}
                 >

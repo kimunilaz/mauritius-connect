@@ -1,3 +1,4 @@
+import { statusLabel } from '../../utils/status.js';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import FormField from '../../components/auth/FormField.jsx';
@@ -23,7 +24,7 @@ const statusCopy = {
 };
 
 export default function LandlordProfilePage() {
-  const { session, refreshProfile } = useAuth();
+  const { session, profile, refreshProfile } = useAuth();
   const token = session.access_token;
   const [form, setForm] = useState({
     first_name: '',
@@ -87,7 +88,11 @@ export default function LandlordProfilePage() {
       });
       setVerificationStatus(updated.verification_status);
       await refreshProfile();
-      setMessage('Landlord profile saved.');
+      setMessage(
+        profile.role === 'AGENT'
+          ? 'Agent profile saved.'
+          : 'Landlord profile saved.',
+      );
     } catch (error) {
       setMessage(safeMessage(error, 'The profile could not be saved.'));
     } finally {
@@ -106,8 +111,14 @@ export default function LandlordProfilePage() {
     <main className="profile-shell">
       <header className="profile-header">
         <div>
-          <p className="eyebrow">Landlord profile</p>
-          <h1>Your landlord details</h1>
+          <p className="eyebrow">
+            {profile.role === 'AGENT' ? 'Agent profile' : 'Landlord profile'}
+          </p>
+          <h1>
+            {profile.role === 'AGENT'
+              ? 'Your agent details'
+              : 'Your landlord details'}
+          </h1>
         </div>
         <Link to="/account">Back to account</Link>
       </header>
@@ -116,17 +127,24 @@ export default function LandlordProfilePage() {
           {message}
         </p>
       ) : null}
-      <section className="profile-section" aria-labelledby="verification-title">
-        <h2 id="verification-title">Verification status</h2>
-        <p>
-          <strong>{verificationStatus}</strong>
-        </p>
-        <p>{statusCopy[verificationStatus]}</p>
-        <p className="field-hint">
-          This status is managed by the platform and cannot be changed from your
-          profile.
-        </p>
-      </section>
+      {profile.role !== 'AGENT' && (
+        <section
+          className="profile-section"
+          aria-labelledby="verification-title"
+        >
+          <h2 id="verification-title">Verification status</h2>
+          <p>
+            <strong className="status-label" data-status={verificationStatus}>
+              {statusLabel(verificationStatus)}
+            </strong>
+          </p>
+          <p>{statusCopy[verificationStatus]}</p>
+          <p className="field-hint">
+            This status is managed by the platform and cannot be changed from
+            your profile.
+          </p>
+        </section>
+      )}
       <section className="profile-section" aria-labelledby="details-title">
         <h2 id="details-title">Personal details</h2>
         <form className="profile-form" onSubmit={submit}>

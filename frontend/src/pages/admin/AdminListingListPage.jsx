@@ -1,3 +1,4 @@
+import { statusLabel } from '../../utils/status.js';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -89,7 +90,9 @@ export default function AdminListingListPage() {
             <li key={item.id}>
               <Link to={`/admin/listings/${item.id}`}>
                 <strong>{item.title}</strong>
-                <span>{item.status}</span>
+                <span className="status-label" data-status={item.status}>
+                  {statusLabel(item.status)}
+                </span>
                 <small>
                   {item.property.locality}, {item.property.district}
                 </small>

@@ -117,7 +117,7 @@ describe('landlord applicant pipeline', () => {
       client: sessionClient(),
     });
     expect(
-      await screen.findByRole('heading', { name: 'Jane Doe' }),
+      await screen.findByRole('heading', { name: 'Welcome back, Jane' }),
     ).toBeVisible();
     expect(screen.queryByText('Applicant pipeline')).not.toBeInTheDocument();
   });
@@ -350,7 +350,7 @@ describe('landlord application detail', () => {
       await screen.findByText('Application marked under review.'),
     ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Shortlist' })).toBeVisible();
-    expect(screen.getAllByText('Under Review').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Under review').length).toBeGreaterThan(0);
     for (const action of [
       /accept/i,
       /viewing invite/i,

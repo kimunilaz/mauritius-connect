@@ -1,6 +1,7 @@
 export function serializeProperty(property) {
   return {
     id: property.id,
+    managed_owner_id: property.managed_owner_id ?? null,
     property_type: property.property_type,
     address_line_1: property.address_line_1 ?? null,
     address_line_2: property.address_line_2 ?? null,

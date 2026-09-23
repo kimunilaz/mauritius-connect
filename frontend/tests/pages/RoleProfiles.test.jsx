@@ -68,7 +68,7 @@ describe('tenant profile page', () => {
     });
 
     expect(
-      await screen.findByRole('heading', { name: 'Your rental profile' }),
+      await screen.findByRole('heading', { name: 'My profile' }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('heading', { name: 'Personal details' }),
@@ -153,7 +153,7 @@ describe('tenant profile page', () => {
       client: createFakeSupabaseClient({ session: createSession() }),
     });
 
-    await screen.findByRole('heading', { name: 'Your rental profile' });
+    await screen.findByRole('heading', { name: 'My profile' });
     fireEvent.click(
       screen.getByRole('button', { name: 'Save rental preferences' }),
     );
@@ -171,7 +171,7 @@ describe('tenant profile page', () => {
       client: createFakeSupabaseClient({ session: createSession() }),
     });
     expect(
-      await screen.findByRole('heading', { name: 'Jane Doe' }),
+      await screen.findByRole('heading', { name: 'Portfolio overview' }),
     ).toBeInTheDocument();
     expect(screen.queryByText('Your rental profile')).not.toBeInTheDocument();
   });
@@ -204,7 +204,7 @@ describe('landlord profile page', () => {
     expect(
       await screen.findByRole('heading', { name: 'Your landlord details' }),
     ).toBeInTheDocument();
-    expect(screen.getByText('UNVERIFIED')).toBeInTheDocument();
+    expect(screen.getByText('Unverified')).toBeInTheDocument();
     expect(
       screen.queryByRole('textbox', { name: /verification status/i }),
     ).not.toBeInTheDocument();

@@ -83,7 +83,7 @@ export default function RegisterPage() {
   return (
     <AuthLayout
       title="Create your account"
-      intro="Register securely with your email. You will choose a tenant or landlord profile after authentication."
+      intro="Create an Asserta account to manage your properties or apply for a rental. You will choose Landlord or Tenant after confirming your email."
       footer={
         <p>
           Already registered? <Link to="/login">Log in</Link>

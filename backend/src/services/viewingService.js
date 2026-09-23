@@ -74,7 +74,7 @@ export function createViewingService({
       if (!application) throw applicationNotFound();
       return application;
     }
-    const landlord = await profiles.ensureLandlordProfile(userId);
+    const landlord = await profiles.ensurePropertyManager(userId);
     const application = await applications.findVisibleById(applicationId);
     if (!application) throw applicationNotFound();
     if (
@@ -171,11 +171,13 @@ export function createViewingService({
     cancel(userId, role, viewingId) {
       return transition(userId, role, viewingId, 'CANCEL');
     },
-    complete(userId, viewingId) {
-      return transition(userId, 'LANDLORD', viewingId, 'COMPLETE');
+    async complete(userId, viewingId) {
+      const manager = await profiles.ensurePropertyManager(userId);
+      return transition(userId, manager.role, viewingId, 'COMPLETE');
     },
-    noShow(userId, viewingId) {
-      return transition(userId, 'LANDLORD', viewingId, 'NO_SHOW');
+    async noShow(userId, viewingId) {
+      const manager = await profiles.ensurePropertyManager(userId);
+      return transition(userId, manager.role, viewingId, 'NO_SHOW');
     },
   });
 }

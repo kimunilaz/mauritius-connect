@@ -215,7 +215,7 @@ function QuestionForm({ initial, onCancel, onSaved, token, listingId }) {
                 />
               </div>
               <button
-                className="text-button"
+                className="text-button text-button-danger"
                 type="button"
                 onClick={() =>
                   setQuestion((current) => ({

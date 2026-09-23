@@ -10,7 +10,7 @@ export function createProperty(accessToken, property) {
 
 export async function listLandlordProperties(
   accessToken,
-  { page = 1, limit = 20, archived = false } = {},
+  { page = 1, limit = 20, archived = false, signal } = {},
 ) {
   const query = new globalThis.URLSearchParams({
     page: String(page),
@@ -19,6 +19,7 @@ export async function listLandlordProperties(
   });
   const envelope = await apiRequest(`/landlord/properties?${query}`, {
     accessToken,
+    signal,
     returnEnvelope: true,
   });
   return { properties: envelope.data, meta: envelope.meta };

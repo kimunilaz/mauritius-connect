@@ -15,7 +15,7 @@ function participant(authService) {
     createAuthenticateUser(authService),
     createLoadApplicationProfile(authService),
     requireActiveAccount,
-    requireRole('TENANT', 'LANDLORD'),
+    requireRole('TENANT', 'LANDLORD', 'AGENT'),
   ];
 }
 
@@ -24,7 +24,9 @@ function role(authService, expectedRole) {
     createAuthenticateUser(authService),
     createLoadApplicationProfile(authService),
     requireActiveAccount,
-    requireRole(expectedRole),
+    requireRole(
+      ...(expectedRole === 'LANDLORD' ? ['LANDLORD', 'AGENT'] : [expectedRole]),
+    ),
   ];
 }
 

@@ -10,13 +10,7 @@ export const APPLICATION_STATUSES = Object.freeze([
   'WITHDRAWN',
 ]);
 
-export function applicationStatusLabel(status) {
-  return status
-    .toLocaleLowerCase()
-    .split('_')
-    .map((part) => part.charAt(0).toLocaleUpperCase() + part.slice(1))
-    .join(' ');
-}
+export { statusLabel as applicationStatusLabel } from './status.js';
 
 export function applicationDate(value) {
   if (!value) return 'Not provided';

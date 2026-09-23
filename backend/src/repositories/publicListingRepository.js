@@ -138,7 +138,9 @@ async function addTrustIndicators(listings) {
     .from('properties')
     .select('id,landlord_id')
     .in('id', propertyIds);
-  const landlordIds = (properties ?? []).map((item) => item.landlord_id);
+  const landlordIds = (properties ?? [])
+    .map((item) => item.landlord_id)
+    .filter(Boolean);
   const { data: landlords } = await getPrivilegedSupabaseClient()
     .from('landlord_profiles')
     .select('id,user_id')
@@ -150,7 +152,7 @@ async function addTrustIndicators(listings) {
     .eq('status', 'VERIFIED')
     .in('verification_type', ['LANDLORD_IDENTITY', 'PROPERTY_AUTHORITY'])
     .or(
-      `and(subject_type.eq.PROPERTY,subject_id.in.(${propertyIds.join(',')})),and(subject_type.eq.USER,subject_id.in.(${userIds.join(',')}))`,
+      `and(subject_type.eq.PROPERTY,subject_id.in.(${propertyIds.join(',')})),and(subject_type.eq.USER,subject_id.in.(${userIds.length ? userIds.join(',') : '00000000-0000-0000-0000-000000000000'}))`,
     );
   const verified = new Set(
     (records ?? []).map((item) => `${item.subject_type}:${item.subject_id}`),

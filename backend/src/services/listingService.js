@@ -106,7 +106,7 @@ export function createListingService({
   now = () => new Date().toISOString(),
 } = {}) {
   async function landlordFor(userId) {
-    return profiles.ensureLandlordProfile(userId);
+    return profiles.ensurePropertyManager(userId);
   }
 
   async function ownedListing(userId, listingId) {
