@@ -3,10 +3,15 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { AuthLoading } from './AuthStatus.jsx';
 
 export default function PublicOnlyRoute({ children }) {
-  const { isAuthenticated, loading, onboardingRequired } = useAuth();
+  const { isAuthenticated, loading, onboardingRequired, recoveryPending } =
+    useAuth();
 
   if (loading) {
     return <AuthLoading />;
+  }
+
+  if (recoveryPending) {
+    return <Navigate to="/reset-password" replace />;
   }
 
   if (isAuthenticated) {

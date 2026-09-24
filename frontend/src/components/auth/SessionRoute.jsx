@@ -4,14 +4,20 @@ import { AuthLoading } from './AuthStatus.jsx';
 
 export default function SessionRoute({ children }) {
   const location = useLocation();
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, recoveryPending } = useAuth();
 
   if (loading) {
     return <AuthLoading />;
   }
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  if (!isAuthenticated || !recoveryPending) {
+    return (
+      <Navigate
+        to="/forgot-password"
+        replace
+        state={{ from: location.pathname }}
+      />
+    );
   }
 
   return children;

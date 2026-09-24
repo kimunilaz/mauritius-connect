@@ -12,6 +12,15 @@ import { getCurrentProfile } from '../services/profileService.js';
 import { getSupabaseClient } from '../services/supabaseClient.js';
 
 const AuthContext = createContext(null);
+const recoveryStorageKey = 'asserta:password-recovery';
+
+function storedRecoveryUserId() {
+  try {
+    return globalThis.localStorage.getItem(recoveryStorageKey);
+  } catch {
+    return null;
+  }
+}
 
 function resolveClient(providedClient) {
   if (providedClient) {
@@ -38,7 +47,20 @@ export function AuthProvider({ children, client: providedClient }) {
   const [loading, setLoading] = useState(true);
   const [onboardingRequired, setOnboardingRequired] = useState(false);
   const [profileError, setProfileError] = useState(null);
+  const [recoveryUserId, setRecoveryUserId] = useState(storedRecoveryUserId);
   const sessionGeneration = useRef(0);
+
+  const beginPasswordRecovery = useCallback((nextSession) => {
+    const userId = nextSession?.user?.id;
+    if (!userId) return;
+    globalThis.localStorage.setItem(recoveryStorageKey, userId);
+    setRecoveryUserId(userId);
+  }, []);
+
+  const completePasswordRecovery = useCallback(() => {
+    globalThis.localStorage.removeItem(recoveryStorageKey);
+    setRecoveryUserId(null);
+  }, []);
 
   const clearAuthState = useCallback(() => {
     sessionGeneration.current += 1;
@@ -57,6 +79,14 @@ export function AuthProvider({ children, client: providedClient }) {
 
       if (!nextSession?.access_token) {
         clearAuthState();
+        return { profile: null, onboardingRequired: false };
+      }
+
+      if (storedRecoveryUserId() === nextSession.user?.id) {
+        setProfile(null);
+        setOnboardingRequired(false);
+        setProfileError(null);
+        setLoading(false);
         return { profile: null, onboardingRequired: false };
       }
 
@@ -118,6 +148,10 @@ export function AuthProvider({ children, client: providedClient }) {
           return;
         }
 
+        if (event === 'PASSWORD_RECOVERY') {
+          beginPasswordRecovery(nextSession);
+        }
+
         globalThis.queueMicrotask(() => {
           if (active) {
             void establishSession(nextSession);
@@ -160,7 +194,7 @@ export function AuthProvider({ children, client: providedClient }) {
       active = false;
       listener.subscription.unsubscribe();
     };
-  }, [clearAuthState, client, establishSession]);
+  }, [beginPasswordRecovery, clearAuthState, client, establishSession]);
 
   const refreshProfile = useCallback(
     () => establishSession(session),
@@ -180,7 +214,8 @@ export function AuthProvider({ children, client: providedClient }) {
     }
 
     clearAuthState();
-  }, [clearAuthState, client]);
+    completePasswordRecovery();
+  }, [clearAuthState, client, completePasswordRecovery]);
 
   const value = useMemo(
     () => ({
@@ -189,23 +224,31 @@ export function AuthProvider({ children, client: providedClient }) {
       profile,
       loading,
       isAuthenticated: Boolean(session?.user),
+      recoveryPending: Boolean(
+        session?.user && recoveryUserId === session.user.id,
+      ),
       onboardingRequired,
       profileError,
       configurationError,
       client,
       establishSession,
+      beginPasswordRecovery,
+      completePasswordRecovery,
       refreshProfile,
       signOut,
     }),
     [
       client,
       configurationError,
+      beginPasswordRecovery,
+      completePasswordRecovery,
       establishSession,
       loading,
       onboardingRequired,
       profile,
       profileError,
       refreshProfile,
+      recoveryUserId,
       session,
       signOut,
     ],

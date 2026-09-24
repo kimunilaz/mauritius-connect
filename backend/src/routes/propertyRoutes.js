@@ -45,6 +45,11 @@ export function createPropertyRouter(
   );
   const imageController = createPropertyImageController(propertyImageService);
 
+  router.get(
+    '/',
+    validateRequest(propertyListQuerySchema, 'query'),
+    controller.list,
+  );
   router.post('/', validateRequest(createPropertySchema), controller.create);
   router.get(
     '/:propertyId',

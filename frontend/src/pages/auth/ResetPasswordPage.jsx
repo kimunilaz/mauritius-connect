@@ -10,7 +10,12 @@ import {
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate();
-  const { client, onboardingRequired } = useAuth();
+  const {
+    client,
+    onboardingRequired,
+    completePasswordRecovery,
+    refreshProfile,
+  } = useAuth();
   const [password, setPassword] = useState('');
   const [passwordConfirmation, setPasswordConfirmation] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
@@ -39,9 +44,16 @@ export default function ResetPasswordPage() {
         return;
       }
 
-      navigate(onboardingRequired ? '/onboarding' : '/account', {
-        replace: true,
-      });
+      completePasswordRecovery();
+      const result = await refreshProfile();
+      navigate(
+        result.onboardingRequired || onboardingRequired
+          ? '/onboarding'
+          : '/account',
+        {
+          replace: true,
+        },
+      );
     } catch {
       setMessage(
         'Password reset is temporarily unavailable. Please try again.',

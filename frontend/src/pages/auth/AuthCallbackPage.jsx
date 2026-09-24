@@ -12,7 +12,12 @@ const allowedNextPaths = new Set([
 export default function AuthCallbackPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { client, configurationError, establishSession } = useAuth();
+  const {
+    client,
+    configurationError,
+    establishSession,
+    beginPasswordRecovery,
+  } = useAuth();
   const [message, setMessage] = useState('Completing authentication…');
 
   useEffect(() => {
@@ -58,13 +63,17 @@ export default function AuthCallbackPage() {
           throw new Error('No authenticated session was established.');
         }
 
+        const requestedNext = searchParams.get('next');
+        if (requestedNext === '/reset-password') {
+          beginPasswordRecovery(session);
+        }
+
         const result = await establishSession(session);
 
         if (!active) {
           return;
         }
 
-        const requestedNext = searchParams.get('next');
         const destination = allowedNextPaths.has(requestedNext)
           ? requestedNext
           : result.onboardingRequired
@@ -85,7 +94,14 @@ export default function AuthCallbackPage() {
     return () => {
       active = false;
     };
-  }, [client, configurationError, establishSession, navigate, searchParams]);
+  }, [
+    client,
+    configurationError,
+    establishSession,
+    beginPasswordRecovery,
+    navigate,
+    searchParams,
+  ]);
 
   return (
     <AuthLayout title="Authentication">

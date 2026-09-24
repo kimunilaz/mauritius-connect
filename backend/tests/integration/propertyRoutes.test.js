@@ -112,6 +112,16 @@ describe('POST /api/v1/properties', () => {
 });
 
 describe('landlord property management', () => {
+  it('lists properties at the properties endpoint', async () => {
+    const context = createPropertyTestContext({
+      propertyRecords: [makeProperty()],
+    });
+    const response = await auth(request(context.app).get('/api/v1/properties'));
+    expect(response.status).toBe(200);
+    expect(response.body.data).toHaveLength(1);
+    expect(response.body.data[0].id).toBe(PROPERTY_ID);
+  });
+
   it('lists only owned active properties with pagination metadata', async () => {
     const properties = Array.from({ length: 25 }, (_, index) =>
       makeProperty({

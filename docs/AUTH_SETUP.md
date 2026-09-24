@@ -105,9 +105,17 @@ redirect entries for:
 
 ```text
 https://<canonical-frontend-origin>/auth/callback
-https://<canonical-frontend-origin>/auth/reset-password
+https://<canonical-frontend-origin>/auth/callback?next=%2Freset-password
 ```
 
 Do not use a production wildcard. Localhost entries may remain only for the
 separate development workflow. Re-test registration, confirmation, login,
 logout, recovery, reset, and callback session handling after any domain change.
+
+The frontend sends the current browser origin as `redirectTo` for recovery. If a
+hosted recovery email still lands on localhost, check Supabase Dashboard, Authentication, URL Configuration: set **Site URL** to the deployed Vercel HTTPS
+origin and add the two exact callback URLs above. In Authentication, Email Templates, Reset password, use `{{ .ConfirmationURL }}`; a custom template
+that links to `{{ .SiteURL }}` can discard the requested recovery callback.
+Vercel must also serve the SPA entry point for `/auth/callback` and
+`/reset-password`. After changing dashboard settings, request a new recovery
+email; old links retain their original destination.

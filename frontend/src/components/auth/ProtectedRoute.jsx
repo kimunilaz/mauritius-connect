@@ -10,6 +10,7 @@ export default function ProtectedRoute({
   const location = useLocation();
   const {
     isAuthenticated,
+    recoveryPending,
     loading,
     onboardingRequired,
     profile,
@@ -18,6 +19,10 @@ export default function ProtectedRoute({
 
   if (loading) {
     return <AuthLoading />;
+  }
+
+  if (recoveryPending) {
+    return <Navigate to="/reset-password" replace />;
   }
 
   if (!isAuthenticated) {

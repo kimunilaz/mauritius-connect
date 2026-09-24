@@ -11,6 +11,7 @@ import {
 } from '../helpers/authTestUtils.jsx';
 
 afterEach(() => {
+  globalThis.localStorage.clear();
   vi.unstubAllGlobals();
 });
 
@@ -178,9 +179,19 @@ describe('recovery flows', () => {
     const session = createSession();
     const client = createFakeSupabaseClient({ session });
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(profileResponse()));
-    renderApp({ route: '/reset-password', client });
+    renderApp({ route: '/auth/callback?next=%2Freset-password', client });
 
-    fireEvent.change(await screen.findByLabelText('New password'), {
+    expect(
+      await screen.findByRole('heading', { name: 'Choose a new password' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: 'Welcome back, Jane' }),
+    ).not.toBeInTheDocument();
+    expect(globalThis.localStorage.getItem('asserta:password-recovery')).toBe(
+      session.user.id,
+    );
+
+    fireEvent.change(screen.getByLabelText('New password'), {
       target: { value: 'new-secure-password' },
     });
     fireEvent.change(screen.getByLabelText('Confirm new password'), {
@@ -196,6 +207,25 @@ describe('recovery flows', () => {
     expect(
       await screen.findByRole('heading', { name: 'Welcome back, Jane' }),
     ).toBeInTheDocument();
+    expect(
+      globalThis.localStorage.getItem('asserta:password-recovery'),
+    ).toBeNull();
+  });
+
+  it('keeps a recovery session out of the workspace until password update', async () => {
+    const session = createSession();
+    globalThis.localStorage.setItem(
+      'asserta:password-recovery',
+      session.user.id,
+    );
+    const client = createFakeSupabaseClient({ session });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(profileResponse()));
+    renderApp({ route: '/account', client });
+
+    expect(
+      await screen.findByRole('heading', { name: 'Choose a new password' }),
+    ).toBeInTheDocument();
+    expect(fetch).not.toHaveBeenCalled();
   });
 });
 
