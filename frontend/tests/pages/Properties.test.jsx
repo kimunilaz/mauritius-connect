@@ -64,6 +64,62 @@ function listResponse(properties = []) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('property route security and list', () => {
+  it('loads landlord properties when the deployed portfolio route is unavailable', async () => {
+    const fetchMock = vi.fn(async (url) => {
+      if (url.endsWith('/auth/me')) return profileResponse(landlordProfile);
+      if (url.includes('/operations/summary'))
+        return jsonResponse(404, {
+          success: false,
+          error: { code: 'RESOURCE_NOT_FOUND', message: 'Route not found.' },
+        });
+      if (url.includes('/landlord/properties?'))
+        return listResponse([property]);
+      throw new Error('Unexpected URL ' + url);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderApp({ route: '/owner/properties', client: sessionClient() });
+
+    expect(await screen.findByText('Moka, Moka')).toBeInTheDocument();
+    expect(screen.queryByText('Route not found.')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'View' })).toHaveAttribute(
+      'href',
+      '/landlord/properties/' + property.id,
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/landlord/properties?'),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: expect.stringMatching(/^Bearer /),
+        }),
+      }),
+    );
+  });
+
+  it.each([
+    [403, 'FORBIDDEN', 'Access denied.'],
+    [500, 'INTERNAL_ERROR', 'Could not load the portfolio.'],
+    [404, 'RESOURCE_NOT_FOUND', 'Property not found.'],
+  ])(
+    'preserves portfolio errors that are not a missing route (%s)',
+    async (status, code, message) => {
+      const fetchMock = vi.fn(async (url) => {
+        if (url.endsWith('/auth/me')) return profileResponse(landlordProfile);
+        return jsonResponse(status, {
+          success: false,
+          error: { code, message },
+        });
+      });
+      vi.stubGlobal('fetch', fetchMock);
+      renderApp({ route: '/owner/properties', client: sessionClient() });
+      expect(await screen.findByText(message)).toBeInTheDocument();
+      expect(
+        fetchMock.mock.calls.some(([url]) =>
+          url.includes('/landlord/properties?'),
+        ),
+      ).toBe(false);
+    },
+  );
+
   it('redirects unauthenticated management access to login', async () => {
     renderApp({ route: '/landlord/properties' });
     expect(

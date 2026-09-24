@@ -1,4 +1,6 @@
 import OwnerSelector from '../agent/OwnerSelector.jsx';
+import PropertyListPage from '../property/PropertyListPage.jsx';
+import { ApiError } from '../../services/apiClient.js';
 import { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -30,7 +32,15 @@ export function useOwnerSummary(propertyId, filters = {}) {
         setState({ data });
       })
       .catch((e) => {
-        if (!c.signal.aborted) setState({ error: e.message });
+        if (!c.signal.aborted)
+          setState({
+            error: e.message,
+            routeUnavailable:
+              e instanceof ApiError &&
+              e.status === 404 &&
+              e.code === 'RESOURCE_NOT_FOUND' &&
+              e.message === 'Route not found.',
+          });
       });
     return () => c.abort();
   }, [token, query, attempt]);
@@ -246,6 +256,8 @@ export function PortfolioPage() {
     occupancy: params.get('occupancy') || undefined,
     location: params.get('location') || undefined,
   });
+  // Keep core property management available before the operations API is deployed.
+  if (state.routeUnavailable) return <PropertyListPage />;
   const occupancy = params.get('occupancy') ?? '',
     location = params.get('location') ?? '';
   return (
