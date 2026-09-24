@@ -1,7 +1,5 @@
 # Asserta
 
-TASK-032 adds private agent-managed owner records to the shared property operations workspace. See [the task report](docs/TASK_032_REPORT.md) for local verification and hosted rollout status.
-
 Asserta is property-management software for owners and property agencies in Mauritius. Property records connect occupancy, tenancies, rent records, maintenance, inspections, private documents, tasks and recorded finances. Leasing and tenant discovery remain integrated. Owners retain their decisions; Asserta does not manage property or collect payments on their behalf. TASK-031 requires the pending forward migrations and private Storage setup before deployment; see [the task report](docs/TASK_031_REPORT.md).
 
 See [the brand source of truth](docs/BRAND.md) for identity, positioning and language. The intended public domain is `asserta-mu.com`; this repository does not assert that the domain or deployment is live. Existing technical package and infrastructure names remain unchanged.
